@@ -36,7 +36,11 @@ bool SimpleFOCRegisters::registerToComms(RegisterIO& comms, uint8_t reg, FOCMoto
         case SimpleFOCRegister::REG_POSITION:
             if (motor->sensor) {
                 comms << (uint32_t)motor->sensor->getFullRotations(); // TODO fix me!
+                #ifdef INTEGER_ANGLE
+                comms << (uint32_t)motor->sensor->getMechanicalAngle();
+                #else
                 comms << motor->sensor->getMechanicalAngle();
+                #endif
             }
             else {
                 comms << (uint32_t)motor->shaft_angle/_2PI;
@@ -54,7 +58,11 @@ bool SimpleFOCRegisters::registerToComms(RegisterIO& comms, uint8_t reg, FOCMoto
             break;
         case SimpleFOCRegister::REG_SENSOR_MECHANICAL_ANGLE:
             if (motor->sensor)
-                comms << motor->sensor->getMechanicalAngle(); // stored angle
+                #ifdef INTEGER_ANGLE
+                comms << (uint32_t)motor->sensor->getMechanicalAngle();
+                #else
+                comms << motor->sensor->getMechanicalAngle();
+                #endif
             else
                 comms << motor->shaft_angle;
             break;

@@ -10,7 +10,7 @@ public:
 	MagneticSensorAS5047(int nCS = -1, bool fastMode = false, SPISettings settings = AS5047SPISettings);
 	virtual ~MagneticSensorAS5047();
 
-    virtual float getSensorAngle() override;
+    virtual angle_type getSensorAngle() override;
 
 	virtual void init(SPIClass* _spi = &SPI);
 private:

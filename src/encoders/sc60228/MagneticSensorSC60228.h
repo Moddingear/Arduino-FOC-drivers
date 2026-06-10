@@ -11,7 +11,7 @@ public:
 	MagneticSensorSC60228(int nCS = -1, SPISettings settings = SC60228SPISettings);
 	virtual ~MagneticSensorSC60228();
 
-    virtual float getSensorAngle() override;
+    virtual angle_type getSensorAngle() override;
 
 	virtual void init(SPIClass* _spi = &SPI) override;
 };

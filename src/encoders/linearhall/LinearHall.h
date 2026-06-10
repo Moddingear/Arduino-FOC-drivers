@@ -28,7 +28,7 @@ class LinearHall: public Sensor{
     //  - This method is pure virtual and must be implemented in subclasses.
     //    Calling this method directly does not update the base-class internal fields.
     //    Use update() when calling from outside code.
-    float getSensorAngle() override;
+    angle_type getSensorAngle() override;
 
     int centerA;
     int centerB;

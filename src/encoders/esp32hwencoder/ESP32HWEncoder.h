@@ -34,7 +34,7 @@ class ESP32HWEncoder : public Sensor{
         void init() override;
         int needsSearch() override;
         int hasIndex();
-        float getSensorAngle() override;
+        angle_type getSensorAngle() override;
         void setCpr(int32_t ppr);
         int32_t getCpr();
         void setStepDirMode();

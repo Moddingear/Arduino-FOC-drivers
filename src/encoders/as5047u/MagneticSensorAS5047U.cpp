@@ -4,7 +4,9 @@
 #include "common/time_utils.h"
 
 MagneticSensorAS5047U::MagneticSensorAS5047U(int nCS, bool fastMode, SPISettings settings) : AS5047U(settings, nCS), fastMode(fastMode) {
-
+    #ifdef INTEGER_ANGLE
+    steps_per_revolution = AS5047U_CPR;
+    #endif
 }
 
 
@@ -19,11 +21,13 @@ void MagneticSensorAS5047U::init(SPIClass* _spi) {
 }
 
 
-float MagneticSensorAS5047U::getSensorAngle() {
-    float angle_data = readRawAngle();
+angle_type MagneticSensorAS5047U::getSensorAngle() {
+    angle_type angle_data = readRawAngle();
     if (!fastMode) // read again to ensure current value
         angle_data = readRawAngle();
+    #ifndef INTEGER_ANGLE
     angle_data = ( angle_data / (float)AS5047U_CPR) * _2PI;
+    #endif
     // return the shaft angle
     return angle_data;
 }

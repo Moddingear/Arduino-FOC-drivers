@@ -10,7 +10,7 @@ public:
 	MagneticSensorMA730SSI(SPISettings settings = MA730SSISettings);
 	virtual ~MagneticSensorMA730SSI();
 
-    virtual float getSensorAngle() override;
+    virtual angle_type getSensorAngle() override;
 
 	virtual void init(SPIClass* _spi = &SPI);
 

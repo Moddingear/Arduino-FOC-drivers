@@ -25,7 +25,7 @@ public:
 
     virtual void init(SPIClass* _spi = &SPI);
 
-    float getSensorAngle() override; // angle in radians, return current value
+    angle_type getSensorAngle() override; // angle in radians, return current value
 
 protected:
     uint16_t readRawAngleSSI();

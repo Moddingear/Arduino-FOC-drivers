@@ -4,6 +4,10 @@
 
 HysteresisSensor::HysteresisSensor(Sensor& wrapped, float amount) : _amount(amount), _wrapped(wrapped) {
     // empty
+    #ifdef INTEGER_ANGLE
+    steps_per_revolution = wrapped.steps_per_revolution;
+    _amount = steps_per_revolution * amount / _2PI;
+    #endif
 };
 
 
@@ -13,19 +17,25 @@ void HysteresisSensor::init() {
     this->Sensor::init();
 };
 
-float HysteresisSensor::getSensorAngle() {
+angle_type HysteresisSensor::getSensorAngle() {
     _wrapped.update();
-    float raw = _wrapped.getMechanicalAngle();
+    angle_type raw = _wrapped.getMechanicalAngle();
 
-    float d_angle = raw - _window;
-    if(abs(d_angle) > (0.8f*_2PI) ) {
+    angle_type d_angle = raw - _window;
+    #ifdef INTEGER_ANGLE
+    #define FULL_REV steps_per_revolution
+    if(abs(d_angle) > steps_per_revolution/2) {
+    #else
+    #define FULL_REV _2PI
+    if(abs(d_angle) > (0.8f*_2PI)) {
+    #endif
         if (d_angle > 0) {
-            if (raw < (_2PI - _amount + _window)) {
+            if (raw < (FULL_REV - _amount + _window)) {
                 _window = _normalizeAngle(raw + _amount);
                 return raw;
             }
         } else {
-            if (raw > (_amount - (_2PI - _window))) {
+            if (raw > (_amount - (FULL_REV - _window))) {
                 _window = _normalizeAngle(raw - _amount);
                 return raw;
             }

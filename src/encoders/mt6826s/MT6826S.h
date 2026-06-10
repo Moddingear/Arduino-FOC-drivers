@@ -173,7 +173,7 @@ public:
     virtual void init(SPIClass* _spi = &SPI);
 
 
-	float getCurrentAngle(); // angle in radians, return current value
+	uint32_t getCurrentAngle(); // angle in counts, return current value
 
 	uint16_t readRawAngle15(); // up to 15bit precision angle value
 

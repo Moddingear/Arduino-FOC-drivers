@@ -16,7 +16,7 @@ class MagneticSensorTLE5012B : public Sensor, public TLE5012B {
         MagneticSensorTLE5012B(int data, int sck, int nCS);
         ~MagneticSensorTLE5012B();
         virtual void init() override;
-        virtual float getSensorAngle() override;
+        virtual angle_type getSensorAngle() override;
 };
 
 

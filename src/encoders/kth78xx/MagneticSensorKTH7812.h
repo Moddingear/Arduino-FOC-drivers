@@ -9,7 +9,7 @@ public:
 	MagneticSensorKTH7812(int nCS = -1, bool withcrc = false, bool fastmode = false, SPISettings settings = KTH7812SPISettings);
 	virtual ~MagneticSensorKTH7812();
 
-    virtual float getSensorAngle() override;
+    virtual angle_type getSensorAngle() override;
 
 	virtual void init(SPIClass* _spi = &SPI);
 };

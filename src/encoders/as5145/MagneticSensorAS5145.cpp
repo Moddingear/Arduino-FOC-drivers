@@ -3,7 +3,9 @@
 #include "common/time_utils.h"
 
 MagneticSensorAS5145::MagneticSensorAS5145(SPISettings settings) : settings(settings) {
-
+    #ifdef INTEGER_ANGLE
+    steps_per_revolution = AS5145_CPR;
+    #endif
 }
 
 
@@ -17,9 +19,11 @@ void MagneticSensorAS5145::init(SPIClass* _spi) {
 }
 
 // check 40us delay between each read?
-float MagneticSensorAS5145::getSensorAngle() {
-    float angle_data = readRawAngleSSI();
+angle_type MagneticSensorAS5145::getSensorAngle() {
+    angle_type angle_data = readRawAngleSSI();
+    #ifndef INTEGER_ANGLE
     angle_data = ( (float)angle_data / AS5145_CPR ) * _2PI;
+    #endif
     // return the shaft angle
     return angle_data;
 }

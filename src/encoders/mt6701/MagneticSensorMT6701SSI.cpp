@@ -3,7 +3,9 @@
 #include "common/time_utils.h"
 
 MagneticSensorMT6701SSI::MagneticSensorMT6701SSI(int nCS, SPISettings settings) : settings(settings), nCS(nCS) {
-
+    #ifdef INTEGER_ANGLE
+    steps_per_revolution = MT6701_CPR;
+    #endif
 }
 
 
@@ -22,9 +24,11 @@ void MagneticSensorMT6701SSI::init(SPIClass* _spi) {
 }
 
 // check 40us delay between each read?
-float MagneticSensorMT6701SSI::getSensorAngle() {
-    float angle_data = readRawAngleSSI();
+angle_type MagneticSensorMT6701SSI::getSensorAngle() {
+    angle_type angle_data = readRawAngleSSI();
+    #ifndef INTEGER_ANGLE
     angle_data = ( angle_data / (float)MT6701_CPR ) * _2PI;
+    #endif
     // return the shaft angle
     return angle_data;
 }

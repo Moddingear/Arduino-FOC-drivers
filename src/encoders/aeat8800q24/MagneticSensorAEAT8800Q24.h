@@ -10,7 +10,7 @@ public:
 	MagneticSensorAEAT8800Q24(int nCS, int pinNSL = MOSI, SPISettings spiSettings = AEAT8800Q24SPISettings, SPISettings ssiSettings = AEAT8800Q24SSISettings);
 	virtual ~MagneticSensorAEAT8800Q24();
 
-    virtual float getSensorAngle() override;
+    virtual angle_type getSensorAngle() override;
 
 	virtual void init(SPIClass* _spi = &SPI);
 };

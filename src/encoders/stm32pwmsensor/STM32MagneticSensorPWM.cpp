@@ -7,7 +7,9 @@
 
 
 STM32MagneticSensorPWM::STM32MagneticSensorPWM(int pin, uint32_t _min_ticks, uint32_t _max_ticks, uint32_t _pwm_freq) : STM32PWMInput(pin), max_ticks(_max_ticks), min_ticks(_min_ticks) {
-
+    #ifdef INTEGER_ANGLE
+    steps_per_revolution = max_ticks - min_ticks;
+    #endif
 };
 
 
@@ -24,9 +26,13 @@ void STM32MagneticSensorPWM::init(){
 
 
 
-float STM32MagneticSensorPWM::getSensorAngle(){
+angle_type STM32MagneticSensorPWM::getSensorAngle(){
     uint32_t ticks = getDutyCycleTicks();
+    #ifdef INTEGER_ANGLE
+    return ticks-min_ticks;
+    #else
     return (ticks - min_ticks) * _2PI / (max_ticks - min_ticks);
+    #endif
 };
 
 

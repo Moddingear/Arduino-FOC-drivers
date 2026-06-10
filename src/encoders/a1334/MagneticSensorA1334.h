@@ -12,7 +12,7 @@ public:
 	MagneticSensorA1334(int nCS = -1, SPISettings settings = A1334SPISettings);
 	virtual ~MagneticSensorA1334();
 
-    virtual float getSensorAngle() override;
+    virtual angle_type getSensorAngle() override;
 
 	virtual void init(SPIClass* _spi = &SPI);
 private:

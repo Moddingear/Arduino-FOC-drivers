@@ -4,16 +4,22 @@
 #include "common/time_utils.h"
 
 MagneticSensorSC60228::MagneticSensorSC60228(int nCS, SPISettings settings) : SC60228(settings, nCS){
-    // nix
+    #ifdef INTEGER_ANGLE
+    steps_per_revolution = SC60228_CPR;
+    #endif
 };
 MagneticSensorSC60228::~MagneticSensorSC60228(){ };
 
 
 
-float MagneticSensorSC60228::getSensorAngle(){
+angle_type MagneticSensorSC60228::getSensorAngle(){
     SC60228Angle angle_data = readRawAngle();
+    #ifdef INTEGER_ANGLE
+    return angle_data.angle;
+    #else
     float result = ( angle_data.angle / (float)SC60228_CPR ) * _2PI;
     return result;
+    #endif
 };
 
 

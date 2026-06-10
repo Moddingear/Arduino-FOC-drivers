@@ -9,6 +9,9 @@
 */
 STM32HWEncoder::STM32HWEncoder(unsigned int _ppr, int pinA, int pinB, int pinI) {
     cpr = _ppr * 4; // 4x for quadrature
+    #ifdef INTEGER_ANGLE
+    steps_per_revolution = cpr;
+    #endif
     _pinA = digitalPinToPinName(pinA);
     _pinB = digitalPinToPinName(pinB);
     _pinI = digitalPinToPinName(pinI);
@@ -21,8 +24,12 @@ TIM_HandleTypeDef STM32HWEncoder::getEncoderTimerHandle() { return encoder_handl
 /*
   Shaft angle calculation
 */
-float STM32HWEncoder::getSensorAngle() { 
+angle_type STM32HWEncoder::getSensorAngle() { 
+    #ifdef INTEGER_ANGLE
+    return encoder_handle.Instance->CNT;
+    #else
     return _2PI * encoder_handle.Instance->CNT / static_cast<float>(cpr);
+    #endif
 }
 /* 
   Set the current angle using CNT register

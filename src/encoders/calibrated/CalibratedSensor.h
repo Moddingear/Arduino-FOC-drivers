@@ -56,7 +56,7 @@ protected:
     * This should call getAngle() on the wrapped instance, and then apply the correction to
     * the value returned. 
     */
-    virtual float getSensorAngle() override;
+    virtual angle_type getSensorAngle() override;
     /**
     * init method of CaibratedSensor - call after calibration
     */

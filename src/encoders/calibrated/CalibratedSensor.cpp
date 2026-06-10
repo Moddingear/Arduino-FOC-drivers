@@ -4,10 +4,14 @@
 // sensor              - instance of original sensor object
 // n_lut               - number of samples in the LUT
 CalibratedSensor::CalibratedSensor(Sensor &wrapped, int n_lut, uint16_t *lut)
-    : _wrapped(wrapped), n_lut(n_lut), allocated(false), calibrationLut(lut) {
-		lut_resolution = _2PI / n_lut;
-		lut_resolution_inv = 1.0f / lut_resolution;
-	};
+    : _wrapped(wrapped), n_lut(n_lut), allocated(false), calibrationLut(lut) 
+{
+	lut_resolution = _2PI / n_lut;
+	lut_resolution_inv = 1.0f / lut_resolution;
+	#ifdef INTEGER_ANGLE
+	steps_per_revolution = wrapped.steps_per_revolution;
+	#endif
+};
 
 CalibratedSensor::~CalibratedSensor() {
 	// delete calibrationLut;
@@ -31,14 +35,17 @@ void CalibratedSensor::init()
 }
 
 // Retrieve the calibrated sensor angle
-float CalibratedSensor::getSensorAngle()
+angle_type CalibratedSensor::getSensorAngle()
 {
 	if(!calibrationLut) {
 		return _wrapped.getMechanicalAngle();
 	}
 
     // raw encoder position e.g. 0-2PI
-	float raw_angle = _wrapped.getMechanicalAngle();
+	angle_type raw_angle = _wrapped.getMechanicalAngle();
+	#ifdef INTEGER_ANGLE
+	return raw_angle;
+	#else
 	// wrap to 0-2PI only if needed (for Encoder sensors that can go beyond 2PI)
 	if (raw_angle < 0 || raw_angle >= _2PI) raw_angle = _normalizeAngle(raw_angle);
 
@@ -61,6 +68,7 @@ float CalibratedSensor::getSensorAngle()
 	float calibrated_angle = raw_angle - correction_offset;
 	if (calibrated_angle < 0 || calibrated_angle >= _2PI) calibrated_angle = _normalizeAngle(calibrated_angle);
 	return calibrated_angle;
+	#endif
 }
 
 // Perform filtering to linearize position sensor eccentricity

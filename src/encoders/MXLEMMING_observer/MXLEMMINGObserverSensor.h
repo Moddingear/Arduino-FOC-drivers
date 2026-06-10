@@ -23,7 +23,7 @@ class MXLEMMINGObserverSensor : public Sensor
 
     // Abstract functions of the Sensor class implementation
     /** get current angle (rad) */
-    float getSensorAngle() override;
+    angle_type getSensorAngle() override;
 
     
     // For sensors with slow communication, use these to poll less often

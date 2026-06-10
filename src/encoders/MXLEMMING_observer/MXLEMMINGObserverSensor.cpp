@@ -9,6 +9,9 @@ MXLEMMINGObserverSensor::MXLEMMINGObserverSensor(const FOCMotor& m) : _motor(m)
   if (_isset(_motor.pole_pairs) && _isset(_motor.KV_rating)){
     flux_linkage = 60 / ( _SQRT3 * _PI * _motor.KV_rating * _motor.pole_pairs * 2);
   }
+  #ifdef INTEGER_ANGLE
+  steps_per_revolution = _motor.pole_pairs*1024;
+  #endif
 }
 
 
@@ -70,7 +73,12 @@ void MXLEMMINGObserverSensor::update() {
     }
   }
   angle_track += d_electrical_angle;
-
+  #ifdef INTEGER_ANGLE
+  setAngleContinuous(angle_track * 1024 / _motor.pole_pairs);
+  #else
+  setAngleContinuous(angle_track / _motor.pole_pairs);
+  #endif
+  #if 0
   // Mechanical angle and full_rotations
   float full_rotation = _2PI * _motor.pole_pairs;
   if(abs(angle_track) > full_rotation){
@@ -82,7 +90,9 @@ void MXLEMMINGObserverSensor::update() {
       angle_track += full_rotation;
     }
   }
+
   angle_prev = angle_track /_motor.pole_pairs;
+  #endif
   
   // Store Previous values
   i_alpha_prev = ABcurrent.alpha;
@@ -99,6 +109,6 @@ void MXLEMMINGObserverSensor::init(){
 /*
 	Shaft angle calculation
 */
-float MXLEMMINGObserverSensor::getSensorAngle(){
+angle_type MXLEMMINGObserverSensor::getSensorAngle(){
   return 0;
 }

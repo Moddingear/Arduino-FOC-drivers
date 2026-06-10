@@ -9,7 +9,7 @@ public:
 	MagneticSensorMT6835(int nCS = -1, SPISettings settings = MT6835SPISettings);
 	virtual ~MagneticSensorMT6835();
 
-    virtual float getSensorAngle() override;
+    virtual angle_type getSensorAngle() override;
 
 	virtual void init(SPIClass* _spi = &SPI);
 };

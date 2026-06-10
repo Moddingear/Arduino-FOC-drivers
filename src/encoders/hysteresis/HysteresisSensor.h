@@ -10,14 +10,14 @@ class HysteresisSensor : public Sensor {
 public:
     HysteresisSensor(Sensor& wrapped, float amount = 0.0125f);
 
-    float getSensorAngle() override;
+    angle_type getSensorAngle() override;
 
     void init() override;
 
-    float _amount;
+    angle_type _amount;
 protected:
     Sensor& _wrapped;
-    float _window;
+    angle_type _window;
 
 };
 

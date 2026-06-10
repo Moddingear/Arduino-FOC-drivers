@@ -11,6 +11,9 @@ extern const PinMap PinMap_LPTIMETR[];
 
 STM32LowPowerEncoder::STM32LowPowerEncoder(unsigned int ppr, int pinA, int pinB, int pinI){
     cpr = ppr * 4; // 4x for quadrature
+    #ifdef INTEGER_ANGLE
+    steps_per_revolution = cpr;
+    #endif
     _pinA = digitalPinToPinName(pinA);
     _pinB = digitalPinToPinName(pinB);
     _pinI = digitalPinToPinName(pinI);
@@ -77,8 +80,12 @@ int STM32LowPowerEncoder::hasIndex(){
 
 
 
-float STM32LowPowerEncoder::getSensorAngle(){
+angle_type STM32LowPowerEncoder::getSensorAngle(){
+    #ifdef INTEGER_ANGLE
+    return _encoder_handle.Instance->CNT&0xFFFFUL;
+    #else
     return _2PI * (_encoder_handle.Instance->CNT&0xFFFFUL) / (float)cpr;
+    #endif
 };
 
 #endif

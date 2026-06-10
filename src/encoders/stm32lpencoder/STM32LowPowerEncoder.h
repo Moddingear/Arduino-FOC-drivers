@@ -24,7 +24,7 @@ class STM32LowPowerEncoder : public Sensor {
     PinName _pinA, _pinB, _pinI;
     
   protected:
-    float getSensorAngle() override;
+    angle_type getSensorAngle() override;
     
     LPTIM_HandleTypeDef _encoder_handle;
     

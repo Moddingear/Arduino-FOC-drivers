@@ -14,7 +14,7 @@ public:
 
     virtual void init(TwoWire* wire = &Wire);
 
-    virtual float getSensorAngle() override;    
+    virtual angle_type getSensorAngle() override;    
 
 protected:
 

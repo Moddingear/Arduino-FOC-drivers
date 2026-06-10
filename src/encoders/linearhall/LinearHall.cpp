@@ -15,9 +15,12 @@ LinearHall::LinearHall(int _hallA, int _hallB, int _pp){
   pp = _pp;
   electrical_rev = 0;
   prev_reading = 0;
+  #ifdef INTEGER_ANGLE
+  steps_per_revolution = 1024;
+  #endif
 }
 
-float LinearHall::getSensorAngle() {
+angle_type LinearHall::getSensorAngle() {
   ReadLinearHalls(pinA, pinB, &lastA, &lastB);
   //offset readings using center values, then compute angle
   float reading = _atan2(lastA - centerA, lastB - centerB);
@@ -42,12 +45,15 @@ float LinearHall::getSensorAngle() {
   }
 
   //convert result from electrical angle and electrical revolution count to shaft angle in radians
-  float result = (reading + PI) / _2PI;
-  result = _2PI * (result + electrical_rev) / pp;
+  float result = ((reading + PI) + _2PI * electrical_rev) /pp;
 
   //update previous reading for rollover handling
   prev_reading = reading;
+  #ifdef INTEGER_ANGLE
+  return result / _2PI * steps_per_revolution;
+  #else
   return result;
+  #endif
 }
 
 void LinearHall::init(int _centerA, int _centerB) {

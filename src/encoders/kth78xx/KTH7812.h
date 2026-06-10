@@ -127,12 +127,12 @@ public:
 
 
     bool fastmode = false;
+    bool checkcrc = false;
 
 private:
 	SPIClass* spi;
 	SPISettings settings;
 	int nCS = -1;
-    bool checkcrc = false;
 
 	uint8_t laststatus = 0;
 	uint8_t lastcrc = 0;

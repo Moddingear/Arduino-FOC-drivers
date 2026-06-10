@@ -27,6 +27,9 @@ HallSensorAny::HallSensorAny(int _hallA, int _hallB, int _hallC, int _pp, HallTy
 
   // hall has 6 segments per electrical revolution
   cpr = _pp * 6;
+  #ifdef INTEGER_ANGLE
+  steps_per_revolution = cpr;
+  #endif
 
   // extern pullup as default
   pullup = Pullup::USE_EXTERN;
@@ -156,8 +159,7 @@ void HallSensorAny::update() {
   long last_electric_rotations = electric_rotations;
   int8_t last_electric_sector = electric_sector;
   if (use_interrupt) interrupts();
-  angle_prev = ((float)((last_electric_rotations * 6 + last_electric_sector) % cpr) / (float)cpr) * _2PI ;
-  full_rotations = (int32_t)((last_electric_rotations * 6 + last_electric_sector) / cpr);
+  setAngleContinuous(last_electric_rotations * 6 + last_electric_sector);
   if (last_print_type != hall_type)
   {
     last_print_type = hall_type;
@@ -191,8 +193,12 @@ void HallSensorAny::update() {
 	Shaft angle calculation
   TODO: numerical precision issue here if the electrical rotation overflows the angle will be lost
 */
-float HallSensorAny::getSensorAngle() {
+angle_type HallSensorAny::getSensorAngle() {
+  #ifdef INTEGER_ANGLE
+  return electric_rotations * 6 + electric_sector;
+  #else
   return ((float)(electric_rotations * 6 + electric_sector) / (float)cpr) * _2PI ;
+  #endif
 }
 
 /*

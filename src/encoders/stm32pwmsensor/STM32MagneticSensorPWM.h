@@ -22,7 +22,7 @@ class STM32MagneticSensorPWM : public Sensor, public STM32PWMInput {
         uint32_t min_ticks = 0;
         bool initialized = false;
     protected:
-        float getSensorAngle() override;
+        angle_type getSensorAngle() override;
 };
 
 #endif

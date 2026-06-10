@@ -23,7 +23,7 @@ public:
 	MagneticSensorAS5145(SPISettings settings = AS5145SSISettings);
 	virtual ~MagneticSensorAS5145();
 
-    virtual float getSensorAngle() override;
+    virtual angle_type getSensorAngle() override;
 
 	virtual void init(SPIClass* _spi = &SPI);
 

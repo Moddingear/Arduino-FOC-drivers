@@ -9,7 +9,7 @@ public:
 	MagneticSensorMT6826S(int nCS = -1, SPISettings settings = MT6826SSPISettings);
 	virtual ~MagneticSensorMT6826S();
 
-    virtual float getSensorAngle() override;
+    virtual angle_type getSensorAngle() override;
 
 	virtual void init(SPIClass* _spi = &SPI);
 };

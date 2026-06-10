@@ -37,7 +37,7 @@ class SmoothingSensor : public Sensor
     float phase_correction = 0;
 
   protected:
-    float getSensorAngle() override;
+    angle_type getSensorAngle() override;
     void init() override;
 
     Sensor& _wrapped;

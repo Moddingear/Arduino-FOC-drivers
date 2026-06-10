@@ -18,6 +18,9 @@ ESP32HWEncoder::ESP32HWEncoder(int pinA, int pinB, int32_t ppr, int pinI)
     #endif
 
     cpr = ppr * 4; // 4x for quadrature
+    #ifdef INTEGER_ANGLE
+    steps_per_revolution = cpr;
+    #endif
 
     pcnt_config.ctrl_gpio_num =  _pinA;
     pcnt_config.pulse_gpio_num = _pinB;
@@ -169,7 +172,7 @@ void ESP32HWEncoder::setQuadratureMode(){
     pcnt_set_mode(pcnt_config.unit, PCNT_CHANNEL_1, PCNT_COUNT_DEC, PCNT_COUNT_INC, PCNT_MODE_REVERSE, PCNT_MODE_KEEP);
 }
 
-float IRAM_ATTR ESP32HWEncoder::getSensorAngle()
+angle_type IRAM_ATTR ESP32HWEncoder::getSensorAngle()
 {
     if(!initialized){return -1.0f;}
 
@@ -194,7 +197,11 @@ float IRAM_ATTR ESP32HWEncoder::getSensorAngle()
     taskEXIT_CRITICAL(&spinlock); // Exit critical section
     
     // Calculate the shaft angle
+    #ifdef INTEGER_ANGLE
+    return angleSum;
+    #else
     return _2PI * angleSum * inv_cpr;
+    #endif
 }
 
 #endif

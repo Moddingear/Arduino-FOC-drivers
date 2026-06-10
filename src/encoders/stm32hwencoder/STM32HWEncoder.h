@@ -32,7 +32,7 @@ class STM32HWEncoder : public Sensor {
     uint32_t index_polarity = RISING;
     
   protected:
-    float getSensorAngle() override;
+    angle_type getSensorAngle() override;
     
     TIM_HandleTypeDef encoder_handle;
 

@@ -25,7 +25,7 @@ void MT6826S::init(SPIClass* _spi) {
 
 
 
-float MT6826S::getCurrentAngle(){
+uint32_t MT6826S::getCurrentAngle(){
     uint32_t rawangle = readRawAngle15();
     if (checkcrc) {
         if (lastcrc != calcCrc(rawangle, laststatus)) {
@@ -33,7 +33,7 @@ float MT6826S::getCurrentAngle(){
             return -1; // return -1 to signal CRC error - the current angle has to be non-negative otherwise
         }
     }
-    return rawangle / (float)MT6826S_CPR * _2PI;
+    return rawangle;
 };
 
 

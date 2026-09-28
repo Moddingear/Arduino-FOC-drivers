@@ -37,13 +37,13 @@ void Phoque1_CurrentSense::OPAMP_Init()
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 
 	GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_3 | GPIO_PIN_5|GPIO_PIN_7; //Opamp 1 | Opamp 2
-	#ifdef OPAMP_USE_EXTERNAL_CHANNEL
+	#if !OPAMP_USE_INTERNAL_CHANNEL
 	GPIO_InitStruct.Pin |= GPIO_PIN_2 | GPIO_PIN_6;
 	#endif
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 	GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_2; // Opamp 3
-	#ifdef OPAMP_USE_EXTERNAL_CHANNEL
+	#if !OPAMP_USE_INTERNAL_CHANNEL
 	GPIO_InitStruct.Pin |= GPIO_PIN_1;
 	#endif
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
@@ -77,10 +77,10 @@ void Phoque1_CurrentSense::OPAMP_Init()
 			.PowerMode = OPAMP_POWERMODE_HIGHSPEED,
 			.Mode = OPAMP_PGA_MODE,
 			.NonInvertingInput = OPAMP_NONINVERTINGINPUT_IO0,
-			#ifdef OPAMP_USE_EXTERNAL_CHANNEL
-			.InternalOutput = DISABLE,
-			#else
+			#if OPAMP_USE_INTERNAL_CHANNEL
 			.InternalOutput = ENABLE,
+			#else
+			.InternalOutput = DISABLE,
 			#endif
 			.TimerControlledMuxmode = OPAMP_TIMERCONTROLLEDMUXMODE_DISABLE,
 			.PgaConnect = OPAMP_PGA_CONNECT_INVERTINGINPUT_IO0_BIAS,
@@ -100,15 +100,24 @@ void Phoque1_CurrentSense::OPAMP_Init()
 #define SAMPLETIME_IMPORTANT ADC_SAMPLETIME_6CYCLES_5
 #define IMPORTANT_CYCLES 6
 #define SAMPLETIME_PERIPHERAL ADC_SAMPLETIME_47CYCLES_5
+
+#if OPAMP_USE_INTERNAL_CHANNEL
+	#define ADC1_IMPORTANT_NUM (read_bemf ? 3:1)
+	#define ADC2_IMPORTANT_NUM (read_bemf ? 3:2)
+#else
+	#define ADC1_IMPORTANT_NUM (read_bemf ? 3:2)
+	#define ADC2_IMPORTANT_NUM (read_bemf ? 3:1)
+#endif
+
 //Start sampling for a long time for the first sample, but sample so that all of the important conversions are centered around update
 int Phoque1_CurrentSense::get_adc1_important_duration()
 {
-	return (read_bemf ? 2:0) * get_conversion_duration(IMPORTANT_CYCLES) + BULB_CYCLES*2;
+	return (ADC1_IMPORTANT_NUM - 1) * get_conversion_duration(IMPORTANT_CYCLES) + BULB_CYCLES*2;
 }
 
 int Phoque1_CurrentSense::get_adc2_important_duration()
 {
-	return (read_bemf ? 2:1) * get_conversion_duration(IMPORTANT_CYCLES) + BULB_CYCLES*2;
+	return (ADC2_IMPORTANT_NUM - 1) * get_conversion_duration(IMPORTANT_CYCLES) + BULB_CYCLES*2;
 }
 
 const char *ADC_ConfigFail = "HAL_ADC_ConfigChannel %d failed!\r\n";
@@ -120,15 +129,20 @@ int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 	sConfig.OffsetNumber = ADC_OFFSET_NONE;
 	sConfig.Offset = 0;
 
-	hadc1->Init.NbrOfConversion += read_bemf ? 5 : 3;
+	#if OPAMP_USE_INTERNAL_CHANNEL
+	hadc1->Init.NbrOfConversion += ADC1_IMPORTANT_NUM + 2;
+	#else
+	hadc1->Init.NbrOfConversion += ADC1_IMPORTANT_NUM + 1;
+	#endif
 	Phoque_CurrentSense::ADC1_Init(hadc1);
 
-	/** Configure Regular Channel (Opamp 1 / phase W current)
-	*/
-	#ifdef OPAMP_USE_EXTERNAL_CHANNEL
-	sConfig.Channel = ADC_CHANNEL_3;
-	#else
+	
+	#if OPAMP_USE_INTERNAL_CHANNEL
+	// Configure Internal Channel (Opamp 1 / phase W current)
 	sConfig.Channel = _OPAMP_internal_channel_to_ADC(1, ADC1);  // OP1_OUT is ADC1_IN13 for internal channel
+	#else
+	// Configure regular channel (Opamp 3 / Phase V current)
+	sConfig.Channel = _getADCChannel(analogInputToPinName(A_CURRV), ADC1); // OP3_OUT is ADC1_IN12
 	#endif
 	sConfig.Rank = ADC_REGULAR_RANK_1;
 	sConfig.SamplingTime = SAMPLETIME_BULB;
@@ -137,22 +151,27 @@ int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 		SimpleFOCDebug::printf(ADC_ConfigFail, 1);
 	}
 
+	#if !OPAMP_USE_INTERNAL_CHANNEL
+	// Configure regular channel (Opamp 1 / Phase W current)
+	sConfig.Channel = _getADCChannel(analogInputToPinName(A_CURRW), ADC1); // OP1_OUT is ADC1_IN3
+	sConfig.Rank = ADC_REGULAR_RANK_2;
+	sConfig.SamplingTime = SAMPLETIME_IMPORTANT;
+	if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
+	{
+		SimpleFOCDebug::printf(ADC_ConfigFail, 2);
+	}
+	#endif
+
 	if(read_bemf)
 	{
 		/* Configure Regular Channel (PA0 / BEMFU / Phase U)
 		*/
 		sConfig.Channel = _getADCChannel(analogInputToPinName(A_BEMFU), ADC1);
+		#if OPAMP_USE_INTERNAL_CHANNEL
 		sConfig.Rank = ADC_REGULAR_RANK_2;
-		sConfig.SamplingTime = SAMPLETIME_IMPORTANT;
-		if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
-		{
-			SimpleFOCDebug::printf(ADC_ConfigFail, 2);
-		}
-
-		/* Configure Regular Channel (PA2 / BEMFW / Phase W)
-		*/
-		sConfig.Channel = _getADCChannel(analogInputToPinName(A_BEMFW), ADC1);
+		#else
 		sConfig.Rank = ADC_REGULAR_RANK_3;
+		#endif
 		sConfig.SamplingTime = SAMPLETIME_IMPORTANT;
 		if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
 		{
@@ -166,22 +185,28 @@ int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 	/* Configure Regular Channel (PC1, supply voltage)
 	*/
 	sConfig.Channel = _getADCChannel(analogInputToPinName(A_VBUS), ADC1);
-	sConfig.Rank = read_bemf ? ADC_REGULAR_RANK_4 : ADC_REGULAR_RANK_2;
+	#if OPAMP_USE_INTERNAL_CHANNEL
+	sConfig.Rank = read_bemf ? ADC_REGULAR_RANK_3 : ADC_REGULAR_RANK_2;
+	#else
+	sConfig.Rank = read_bemf ? ADC_REGULAR_RANK_4 : ADC_REGULAR_RANK_3;
+	#endif
 	sConfig.SamplingTime = SAMPLETIME_PERIPHERAL;
 	if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
 	{
-		SimpleFOCDebug::printf(ADC_ConfigFail, read_bemf ? 4:2);
+		SimpleFOCDebug::printf(ADC_ConfigFail, ADC1_IMPORTANT_NUM + 1);
 	}
 
+	#if OPAMP_USE_INTERNAL_CHANNEL
 	/** Configure Regular Channel (PC0, Potentiometer)
 	*/
 	sConfig.Channel = _getADCChannel(analogInputToPinName(A_POTENTIOMETER), ADC1);
-	sConfig.Rank = read_bemf ? ADC_REGULAR_RANK_5 : ADC_REGULAR_RANK_3;
+	sConfig.Rank = read_bemf ? ADC_REGULAR_RANK_4 : ADC_REGULAR_RANK_3;
 	sConfig.SamplingTime = SAMPLETIME_PERIPHERAL;
 	if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
 	{
-		SimpleFOCDebug::printf(ADC_ConfigFail, read_bemf ? 5:3);
+		SimpleFOCDebug::printf(ADC_ConfigFail, ADC1_IMPORTANT_NUM + 2);
 	}
+	#endif
 	return hadc1->Init.NbrOfConversion;
 }
 
@@ -192,15 +217,19 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 	sConfig.OffsetNumber = ADC_OFFSET_NONE;
 	sConfig.Offset = 0;
 
-	hadc2->Init.NbrOfConversion += read_bemf ? 4 : 3;
+	#if OPAMP_USE_INTERNAL_CHANNEL
+	hadc2->Init.NbrOfConversion += ADC2_IMPORTANT_NUM + 1;
+	#else
+	hadc2->Init.NbrOfConversion += ADC2_IMPORTANT_NUM + 2;
+	#endif
 	Phoque_CurrentSense::ADC2_Init(hadc2);
 
-	/** Configure Regular Channel (Opamp 2 / phase U current)
-	*/
-	#ifdef OPAMP_USE_EXTERNAL_CHANNEL
-	sConfig.Channel = ADC_CHANNEL_3;
-	#else
+	#if OPAMP_USE_INTERNAL_CHANNEL
+	// Configure Internal Channel (Opamp 2 / phase U current)
 	sConfig.Channel = _OPAMP_internal_channel_to_ADC(2, ADC2);  // OP2_OUT is ADC2_IN16 for internal channel
+	#else
+	// Configure regular channel (Opamp 2 / Phase U current)
+	sConfig.Channel = _getADCChannel(analogInputToPinName(A_CURRU), ADC2); // OP2_OUT is ADC2_IN3
 	#endif
 	sConfig.Rank = ADC_REGULAR_RANK_1;
 	sConfig.SamplingTime = SAMPLETIME_BULB;
@@ -208,26 +237,42 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 	{
 		SimpleFOCDebug::printf(ADC_ConfigFail, 1);
 	}
-	/** Configure Regular Channel (Opamp 3 / phase V current)
-	*/
-	#ifdef OPAMP_USE_EXTERNAL_CHANNEL
-	sConfig.Channel = ADC_CHANNEL_12;
-	#else
+
+	#if OPAMP_USE_INTERNAL_CHANNEL
+	// Configure Internal Channel (Opamp 3 / phase V current)
 	sConfig.Channel = _OPAMP_internal_channel_to_ADC(3, ADC2);     // OP3_OUT is ADC2_IN18 for internal channel
-	#endif
 	sConfig.Rank = ADC_REGULAR_RANK_2;
 	sConfig.SamplingTime = SAMPLETIME_IMPORTANT;
 	if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
 	{
 		SimpleFOCDebug::printf(ADC_ConfigFail, 2);
 	}
+	#endif
 
 	if(read_bemf)
 	{
-		/** Configure Regular Channel (PC4 / BEMFV / Phase V)
+		/* Configure Regular Channel (PC4 / BEMFV / Phase V)
 		*/
 		sConfig.Channel = _getADCChannel(analogInputToPinName(A_BEMFV), ADC2);
+		#if OPAMP_USE_INTERNAL_CHANNEL
 		sConfig.Rank = ADC_REGULAR_RANK_3;
+		#else
+		sConfig.Rank = ADC_REGULAR_RANK_2;
+		#endif
+		sConfig.SamplingTime = SAMPLETIME_IMPORTANT;
+		if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
+		{
+			SimpleFOCDebug::printf(ADC_ConfigFail, 2);
+		}
+
+		/** Configure Regular Channel (PA4 / BEMFW / Phase W)
+		*/
+		sConfig.Channel = _getADCChannel(analogInputToPinName(A_BEMFW), ADC2);
+		#if OPAMP_USE_INTERNAL_CHANNEL
+		sConfig.Rank = ADC_REGULAR_RANK_4;
+		#else
+		sConfig.Rank = ADC_REGULAR_RANK_3;
+		#endif
 		sConfig.SamplingTime = SAMPLETIME_IMPORTANT;
 		if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
 		{
@@ -239,12 +284,28 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 	/** Configure Regular Channel (PF1 / Mosfet temperature)
 	*/
 	sConfig.Channel = _getADCChannel(analogInputToPinName(A_TEMPERATURE), ADC2);
-	sConfig.Rank = read_bemf ? ADC_REGULAR_RANK_4 : ADC_REGULAR_RANK_3;
+	#if OPAMP_USE_INTERNAL_CHANNEL
+	sConfig.Rank = read_bemf ? ADC_REGULAR_RANK_5 : ADC_REGULAR_RANK_3;
+	#else
+	sConfig.Rank = read_bemf ? ADC_REGULAR_RANK_4 : ADC_REGULAR_RANK_2;
+	#endif
 	sConfig.SamplingTime = SAMPLETIME_PERIPHERAL;
 	if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
 	{
 		SimpleFOCDebug::printf(ADC_ConfigFail, read_bemf ? 4:3);
 	}
+
+	#if !OPAMP_USE_INTERNAL_CHANNEL
+	/** Configure Regular Channel (PC0, Potentiometer)
+	*/
+	sConfig.Channel = _getADCChannel(analogInputToPinName(A_POTENTIOMETER), ADC2);
+	sConfig.Rank = read_bemf ? ADC_REGULAR_RANK_5 : ADC_REGULAR_RANK_3;
+	sConfig.SamplingTime = SAMPLETIME_PERIPHERAL;
+	if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
+	{
+		SimpleFOCDebug::printf(ADC_ConfigFail, ADC2_IMPORTANT_NUM + 2);
+	}
+	#endif
 	return hadc2->Init.NbrOfConversion;
 }
 
@@ -254,27 +315,54 @@ uint16_t Phoque1_CurrentSense::readRaw(const int pin) const
 	{
 	case A_CURRU_H:
 	case -1:
+	case A_CURRU:
 		return adc2_buffer[0];
 	case A_CURRV_H:
 	case -2:
+	case A_CURRV:
+		#if OPAMP_USE_INTERNAL_CHANNEL
 		return adc2_buffer[1];
+		#else
+		return adc1_buffer[0];
+		#endif
 	case A_CURRW_H:
 	case -3:
+	case A_CURRW:
+		#if OPAMP_USE_INTERNAL_CHANNEL
 		return adc1_buffer[0];
+		#else
+		return adc1_buffer[1];
+		#endif
 
 	case A_BEMFU:
+		#if OPAMP_USE_INTERNAL_CHANNEL
 		return adc1_buffer[1];
-	case A_BEMFV:
+		#else
 		return adc1_buffer[2];
-	case A_BEMFW:
+		#endif
+	case A_BEMFV:
+		#if OPAMP_USE_INTERNAL_CHANNEL
 		return adc2_buffer[2];
+		#else
+		return adc2_buffer[1];
+		#endif
+	case A_BEMFW:
+		#if OPAMP_USE_INTERNAL_CHANNEL
+		return adc2_buffer[3];
+		#else
+		return adc2_buffer[2];
+		#endif
 
 	case A_VBUS:
-		return adc1_buffer[read_bemf ? 3:1];
+		return adc1_buffer[ADC1_IMPORTANT_NUM];
 	case A_POTENTIOMETER:
-		return adc1_buffer[read_bemf ? 4:2];
+		#if OPAMP_USE_INTERNAL_CHANNEL
+		return adc1_buffer[ADC1_IMPORTANT_NUM + 1];
+		#else
+		return adc2_buffer[ADC2_IMPORTANT_NUM + 1];
+		#endif
 	case A_TEMPERATURE:
-		return adc2_buffer[read_bemf ? 3:2];
+		return adc2_buffer[ADC2_IMPORTANT_NUM];
 	default:
 		return 0;
 	}
@@ -284,7 +372,11 @@ inline void Phoque1_CurrentSense::clear_currents()
 {
 	adc1_buffer[0] = UINT16_MAX;
 	adc2_buffer[0] = UINT16_MAX;
+	#if OPAMP_USE_INTERNAL_CHANNEL
 	adc2_buffer[1] = UINT16_MAX;
+	#else
+	adc1_buffer[1] = UINT16_MAX;
+	#endif
 }
 
 #endif

@@ -475,7 +475,9 @@ void Phoque_CurrentSense::print_temperature_LUT()
 {
 	for (size_t i = 0; i < temperature_lut.size(); i++)
 	{
-		Serial.printf("%ddegC: %d\r\n", i*TEMP_STEP+TEMP_INDEX_ZERO, temperature_lut[i]);
+		SimpleFOCDebug::print((int)(i*TEMP_STEP+TEMP_INDEX_ZERO));
+		SimpleFOCDebug::print("degC: ");
+		SimpleFOCDebug::println(temperature_lut[i]);
 	}
 }
 #endif

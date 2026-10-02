@@ -376,7 +376,19 @@ void Phoque_CurrentSense::calibrateOffsets(){
     offset_ia = accA * ((Stm32CurrentSenseParams*)params)->adc_voltage_conv / calibration_rounds;
     offset_ib = accB * ((Stm32CurrentSenseParams*)params)->adc_voltage_conv / calibration_rounds;
     offset_ic = accC * ((Stm32CurrentSenseParams*)params)->adc_voltage_conv / calibration_rounds;
-	SimpleFOCDebug::printf(PHOQUE_CS_DEBUG "Calibrated centers at %f, %f, %f (gains %f %f %f)\r\n", offset_ia, offset_ib, offset_ic, gain_a, gain_b, gain_c);
+	SimpleFOCDebug::print(PHOQUE_CS_DEBUG "Calibrated centers at ");
+	SimpleFOCDebug::print(offset_ia);
+	SimpleFOCDebug::print(", ");
+	SimpleFOCDebug::print(offset_ib);
+	SimpleFOCDebug::print(", ");
+	SimpleFOCDebug::print(offset_ic);
+	SimpleFOCDebug::print(" (gains ");
+	SimpleFOCDebug::print(gain_a);
+	SimpleFOCDebug::print(", ");
+	SimpleFOCDebug::print(gain_b);
+	SimpleFOCDebug::print(", ");
+	SimpleFOCDebug::print(gain_c);
+	SimpleFOCDebug::println(")");
 }
 
 int Phoque_CurrentSense::driverAlign(float align_voltage, bool modulation_centered)

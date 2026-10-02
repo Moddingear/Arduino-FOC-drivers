@@ -120,7 +120,7 @@ int Phoque1_CurrentSense::get_adc2_important_duration()
 	return (ADC2_IMPORTANT_NUM - 1) * get_conversion_duration(IMPORTANT_CYCLES) + BULB_CYCLES*2;
 }
 
-const char *ADC_ConfigFail = "HAL_ADC_ConfigChannel %d failed!\r\n";
+const char *ADC_ConfigFailStart = "HAL_ADC_ConfigChannel failed! ADC";
 
 int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 {
@@ -148,7 +148,8 @@ int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 	sConfig.SamplingTime = SAMPLETIME_BULB;
 	if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
 	{
-		SimpleFOCDebug::printf(ADC_ConfigFail, 1);
+		SimpleFOCDebug::print(ADC_ConfigFail);
+		SimpleFOCDebug::println("1CURRV")
 	}
 
 	#if !OPAMP_USE_INTERNAL_CHANNEL
@@ -158,7 +159,8 @@ int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 	sConfig.SamplingTime = SAMPLETIME_IMPORTANT;
 	if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
 	{
-		SimpleFOCDebug::printf(ADC_ConfigFail, 2);
+		SimpleFOCDebug::print(ADC_ConfigFail);
+		SimpleFOCDebug::println("1CURRW")
 	}
 	#endif
 
@@ -175,7 +177,8 @@ int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 		sConfig.SamplingTime = SAMPLETIME_IMPORTANT;
 		if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
 		{
-			SimpleFOCDebug::printf(ADC_ConfigFail, 3);
+			SimpleFOCDebug::print(ADC_ConfigFail);
+			SimpleFOCDebug::println("1BEMFU")
 		}
 	}
 	
@@ -193,7 +196,8 @@ int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 	sConfig.SamplingTime = SAMPLETIME_PERIPHERAL;
 	if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
 	{
-		SimpleFOCDebug::printf(ADC_ConfigFail, ADC1_IMPORTANT_NUM + 1);
+		SimpleFOCDebug::print(ADC_ConfigFail);
+		SimpleFOCDebug::println("1VBUS")
 	}
 
 	#if OPAMP_USE_INTERNAL_CHANNEL
@@ -204,7 +208,8 @@ int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 	sConfig.SamplingTime = SAMPLETIME_PERIPHERAL;
 	if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
 	{
-		SimpleFOCDebug::printf(ADC_ConfigFail, ADC1_IMPORTANT_NUM + 2);
+		SimpleFOCDebug::print(ADC_ConfigFail);
+		SimpleFOCDebug::println("1POT")
 	}
 	#endif
 	return hadc1->Init.NbrOfConversion;
@@ -235,7 +240,8 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 	sConfig.SamplingTime = SAMPLETIME_BULB;
 	if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
 	{
-		SimpleFOCDebug::printf(ADC_ConfigFail, 1);
+		SimpleFOCDebug::print(ADC_ConfigFail);
+		SimpleFOCDebug::println("2CURRU")
 	}
 
 	#if OPAMP_USE_INTERNAL_CHANNEL
@@ -245,7 +251,8 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 	sConfig.SamplingTime = SAMPLETIME_IMPORTANT;
 	if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
 	{
-		SimpleFOCDebug::printf(ADC_ConfigFail, 2);
+		SimpleFOCDebug::print(ADC_ConfigFail);
+		SimpleFOCDebug::println("2CURRV")
 	}
 	#endif
 
@@ -262,7 +269,8 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 		sConfig.SamplingTime = SAMPLETIME_IMPORTANT;
 		if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
 		{
-			SimpleFOCDebug::printf(ADC_ConfigFail, 2);
+			SimpleFOCDebug::print(ADC_ConfigFail);
+			SimpleFOCDebug::println("2BEMFV")
 		}
 
 		/** Configure Regular Channel (PA4 / BEMFW / Phase W)
@@ -276,7 +284,8 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 		sConfig.SamplingTime = SAMPLETIME_IMPORTANT;
 		if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
 		{
-			SimpleFOCDebug::printf(ADC_ConfigFail, 3);
+			SimpleFOCDebug::print(ADC_ConfigFail);
+			SimpleFOCDebug::println("2BEMFW")
 		}
 	}
 	
@@ -292,7 +301,8 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 	sConfig.SamplingTime = SAMPLETIME_PERIPHERAL;
 	if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
 	{
-		SimpleFOCDebug::printf(ADC_ConfigFail, read_bemf ? 4:3);
+		SimpleFOCDebug::print(ADC_ConfigFail);
+		SimpleFOCDebug::println("2TEMP")
 	}
 
 	#if !OPAMP_USE_INTERNAL_CHANNEL
@@ -303,7 +313,8 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 	sConfig.SamplingTime = SAMPLETIME_PERIPHERAL;
 	if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
 	{
-		SimpleFOCDebug::printf(ADC_ConfigFail, ADC2_IMPORTANT_NUM + 2);
+		SimpleFOCDebug::print(ADC_ConfigFail);
+		SimpleFOCDebug::println("2POT")
 	}
 	#endif
 	return hadc2->Init.NbrOfConversion;

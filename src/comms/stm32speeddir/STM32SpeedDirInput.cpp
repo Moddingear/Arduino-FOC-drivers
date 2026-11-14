@@ -1,7 +1,7 @@
 
 #include "./STM32SpeedDirInput.h"
 
-#if defined(_STM32_DEF_)
+#if defined(ARDUINO_ARCH_STM32) && !defined(USE_HALV2_DRIVER)
 
 STM32SpeedDirInput::STM32SpeedDirInput(int pin_speed, int pin_dir, uint32_t pwm_freq) : STM32PWMInput(pin_speed, _pwm_freq) {
     _pin_speed = pin_speed;

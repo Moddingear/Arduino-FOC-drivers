@@ -1,4 +1,4 @@
-#if defined(STM32G4xx)
+#if defined(STM32G4) || defined(STM32C5)
 
 #include "Phoque_CurrentSense.hpp"
 #include <communication/SimpleFOCDebug.h>
@@ -7,11 +7,11 @@
 static constexpr float adc_voltage = 3.3f;
 static constexpr int adc_resolution = 4095;
 
-static ADC_HandleTypeDef hadc1;
-static ADC_HandleTypeDef hadc2;
+static ADC_HANDLE_TYPE hadc1;
+static ADC_HANDLE_TYPE hadc2;
 
-static DMA_HandleTypeDef hdma_adc1;
-static DMA_HandleTypeDef hdma_adc2;
+static DMA_HANDLE_TYPE hdma_adc1;
+static DMA_HANDLE_TYPE hdma_adc2;
 
 #define PHOQUE_CS_DEBUG "PHOQUE-CS: "
 
@@ -39,16 +39,35 @@ Phoque_CurrentSense::~Phoque_CurrentSense()
 
 void Phoque_CurrentSense::GPIO_Init()
 {
+	#ifdef USE_HALV2_DRIVER
+	HAL_RCC_ADC12_EnableClock();
+	#else
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	__HAL_RCC_GPIOF_CLK_ENABLE();
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 
 	__HAL_RCC_ADC12_CLK_ENABLE();
+	#endif
 }
 
 void Phoque_CurrentSense::DMA_InitClock() 
 {
+	#ifdef USE_HALV2_DRIVER
+	HAL_RCC_LPDMA1_EnableClock();
+	HAL_RCC_LPDMA2_EnableClock();
+
+	#ifdef DMA_USE_INTERRUPT
+	/* DMA interrupt init */
+	/* DMA1_Channel1_IRQn interrupt configuration */
+	HAL_CORTEX_NVIC_SetPriority(DMA1_Channel1_IRQn, HAL_CORTEX_NVIC_PREEMP_PRIORITY_0, HAL_CORTEX_NVIC_SUB_PRIORITY_0);
+	HAL_CORTEX_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+	/* DMA1_Channel2_IRQn interrupt configuration */
+	HAL_CORTEX_NVIC_SetPriority(DMA2_Channel1_IRQn, HAL_CORTEX_NVIC_PREEMP_PRIORITY_0, HAL_CORTEX_NVIC_SUB_PRIORITY_0);
+	HAL_CORTEX_NVIC_EnableIRQ(DMA2_Channel1_IRQn);
+	#endif
+
+	#else
 	/* DMA controller clock enable */
 	__HAL_RCC_DMAMUX1_CLK_ENABLE();
 	__HAL_RCC_DMA1_CLK_ENABLE();
@@ -69,6 +88,7 @@ void Phoque_CurrentSense::DMA_InitClock()
 	PeriphClkInit.PeriphClockSelection   = RCC_PERIPHCLK_ADC12;
 	PeriphClkInit.Adc12ClockSelection    = RCC_ADC12CLKSOURCE_PLL;
 	HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit);
+	#endif
 }
 
 void Phoque_CurrentSense::OPAMP_Init()
@@ -78,12 +98,39 @@ void Phoque_CurrentSense::OPAMP_Init()
 
 int Phoque_CurrentSense::get_conversion_duration(int sample_ticks) const
 {
+	#ifdef STM32G4
 	//12.5 ticks of SAR @ 12bits, + half tick of sample
 	return sample_ticks + 13;
+	#endif
+	#ifdef STM32C5
+	//Conversion takes 13 clock cycles at 12 bits resolution
+	return sample_ticks + 13;
+	#endif
 }
 
-int Phoque_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
+int Phoque_CurrentSense::ADC1_Init(ADC_HANDLE_TYPE* hadc1, uint8_t sequence_length)
 {
+	#ifdef USE_HALV2_DRIVER
+	HAL_ADC_Init(hadc1, HAL_ADC1);
+	hal_adc_config_t config = {
+		.resolution = HAL_ADC_RESOLUTION_12_BIT,
+		.sampling_mode = HAL_ADC_SAMPLING_MODE_NORMAL
+	};
+	HAL_ADC_SetConfig(hadc1, &config);
+	hal_adc_reg_config_t reg_config = {
+		.trigger_src = HAL_ADC_REG_TRIG_TIM1_TRGO,
+		.trigger_edge = HAL_ADC_REG_TRIG_EDGE_RISING,
+		.sequencer_length = sequence_length,
+		.sequencer_discont = HAL_ADC_REG_SEQ_DISCONT_DISABLE,
+		.continuous = HAL_ADC_REG_CONV_SINGLE,
+		.overrun = HAL_ADC_REG_OVR_DATA_PRESERVED,
+	};
+	HAL_ADC_REG_SetConfig(hadc1, &reg_config);
+	hal_adc_mm_config_t mm_config = {
+		.mode = HAL_ADC_MM_INDEPENDENT,
+	};
+	HAL_ADC_MM_SetConfig(hadc1, &mm_config);
+	#else
 	ADC_MultiModeTypeDef multimode = {0};
 	hadc1->Instance = ADC1;
 	hadc1->Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
@@ -101,6 +148,8 @@ int Phoque_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 	hadc1->Init.DMAContinuousRequests = ENABLE;
 	hadc1->Init.Overrun = ADC_OVR_DATA_PRESERVED;
 
+	hadc1->Init.NbrOfConversion = sequence_length;
+
 	if (HAL_ADC_Init(hadc1) != HAL_OK)
 	{
 		SimpleFOCDebug::println(PHOQUE_CS_DEBUG "HAL_ADC_Init failed!");
@@ -113,12 +162,29 @@ int Phoque_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 	{
 		SimpleFOCDebug::println(PHOQUE_CS_DEBUG "HAL_ADCEx_MultiModeConfigChannel 1 failed!");
 	}
-
+	#endif
 	return 0;
 }
 
-int Phoque_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
+int Phoque_CurrentSense::ADC2_Init(ADC_HANDLE_TYPE* hadc2, uint8_t sequence_length)
 {
+	#ifdef USE_HALV2_DRIVER
+	HAL_ADC_Init(hadc2, HAL_ADC1);
+	hal_adc_config_t config = {
+		.resolution = HAL_ADC_RESOLUTION_12_BIT,
+		.sampling_mode = HAL_ADC_SAMPLING_MODE_NORMAL
+	};
+	HAL_ADC_SetConfig(hadc2, &config);
+	hal_adc_reg_config_t reg_config = {
+		.trigger_src = HAL_ADC_REG_TRIG_TIM1_TRGO2,
+		.trigger_edge = HAL_ADC_REG_TRIG_EDGE_RISING,
+		.sequencer_length = sequence_length,
+		.sequencer_discont = HAL_ADC_REG_SEQ_DISCONT_DISABLE,
+		.continuous = HAL_ADC_REG_CONV_SINGLE,
+		.overrun = HAL_ADC_REG_OVR_DATA_PRESERVED,
+	};
+	HAL_ADC_REG_SetConfig(hadc2, &reg_config);
+	#else
 	hadc2->Instance = ADC2;
 	hadc2->Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
 	hadc2->Init.Resolution = ADC_RESOLUTION_12B;
@@ -135,16 +201,32 @@ int Phoque_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 	hadc2->Init.DMAContinuousRequests = ENABLE;
 	hadc2->Init.Overrun = ADC_OVR_DATA_PRESERVED;
 
+	hadc2->Init.NbrOfConversion = sequence_length;
+
 	if (HAL_ADC_Init(hadc2) != HAL_OK)
 	{
 		SimpleFOCDebug::println(PHOQUE_CS_DEBUG "HAL_ADC_Init failed!");
 	}
-
+	#endif
 	return 0;
 }
 
-void Phoque_CurrentSense::DMA_Init(ADC_HandleTypeDef *hadc, DMA_HandleTypeDef *hdma_adc, DMA_Channel_TypeDef* channel, uint32_t request)
+void Phoque_CurrentSense::DMA_Init(ADC_HANDLE_TYPE *hadc, DMA_HANDLE_TYPE *hdma_adc, DMA_Channel_TypeDef* channel, uint32_t request)
 {
+	#ifdef USE_HALV2_DRIVER
+	HAL_DMA_Init(hdma_adc, static_cast<hal_dma_channel_t>(reinterpret_cast<uintptr_t>(channel)));
+	hal_dma_direct_xfer_config_t config = {
+		.request = static_cast<hal_dma_request_source_t>(request),
+		.direction = HAL_DMA_DIRECTION_PERIPH_TO_MEMORY,
+		.src_inc = HAL_DMA_SRC_ADDR_FIXED,
+		.dest_inc = HAL_DMA_DEST_ADDR_INCREMENTED,
+		.src_data_width = HAL_DMA_SRC_DATA_WIDTH_HALFWORD,
+		.dest_data_width = HAL_DMA_DEST_DATA_WIDTH_HALFWORD,
+		.priority = HAL_DMA_PRIORITY_LOW_WEIGHT_LOW,
+	};
+	HAL_DMA_SetConfigPeriphDirectXfer(hdma_adc, &config);
+	HAL_ADC_REG_SetDMA(hadc, hdma_adc);
+	#else
 	hdma_adc->Instance = channel;
 	hdma_adc->Init.Request = request;
 	hdma_adc->Init.Direction = DMA_PERIPH_TO_MEMORY;
@@ -160,13 +242,14 @@ void Phoque_CurrentSense::DMA_Init(ADC_HandleTypeDef *hadc, DMA_HandleTypeDef *h
 		SimpleFOCDebug::println(PHOQUE_CS_DEBUG "HAL_DMA_Init failed!");
 	}
 	__HAL_LINKDMA(hadc, DMA_Handle, *hdma_adc);
+	#endif
 }
 
 void* Phoque_CurrentSense::SyncLowSide(void* _driver_params, void* _cs_params)
 {
 	STM32DriverParams* driver_params = (STM32DriverParams*)_driver_params;
 	Stm32CurrentSenseParams* cs_params = (Stm32CurrentSenseParams*)_cs_params;
-	TIM_TypeDef *instance = cs_params->timer_handle->Instance;
+	TIM_TypeDef *instance = TIMER_INSTANCE(cs_params->timer_handle);
 	 
 	// stop all the timers for the driver
 	stm32_pause(driver_params);
@@ -182,6 +265,7 @@ void* Phoque_CurrentSense::SyncLowSide(void* _driver_params, void* _cs_params)
 	}
 	uint32_t adc_ccr = ADC12_COMMON->CCR;
 	uint32_t adc_prescaler;
+	#ifdef ADC_CCR_CKMODE_Msk
 	if (adc_ccr & ADC_CCR_CKMODE_Msk)
 	{
 		//sync mode
@@ -194,12 +278,45 @@ void* Phoque_CurrentSense::SyncLowSide(void* _driver_params, void* _cs_params)
 		uint16_t adc_prescalers[] = {1, 2, 4, 6, 8, 10, 12, 16, 32, 64, 128, 256};
 		adc_prescaler = adc_prescalers[(adc_ccr & ADC_CCR_PRESC_Msk) >> ADC_CCR_PRESC_Pos];
 	}
+	#else
+	adc_prescaler = 1;
+	#endif
 	
+	#ifdef USE_HALV2_DRIVER
+	uint32_t adc_clock_freq = HAL_ADC_GetClockFreq(cs_params->adc_handle) / adc_prescaler;
+	#else
 	uint32_t adc_clock_freq = HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_ADC12) / adc_prescaler;
-	uint32_t timer_clock_freq = stm32_getTimerClockFreq(cs_params->timer_handle) / (cs_params->timer_handle->Instance->PSC +1);
+	#endif
+	uint32_t timer_clock_freq = stm32_getTimerClockFreq(cs_params->timer_handle) / (TIMER_INSTANCE(cs_params->timer_handle)->PSC +1);
 	uint32_t adc1_center = (uint64_t)get_adc1_important_duration() * timer_clock_freq / adc_clock_freq / 2;
 	uint32_t adc2_center = (uint64_t)get_adc2_important_duration() * timer_clock_freq / adc_clock_freq / 2;
 
+	#ifdef USE_HALV2_DRIVER
+	// set the trigger output event
+	hal_tim_oc_compare_unit_config_t oc_init = {
+		.mode = HAL_TIM_OC_COMBINED_PWM2,
+		.pulse = instance->ARR-adc1_center,
+	};
+	if (adc1_center > 0)
+	{
+		HAL_TIM_OC_SetConfigCompareUnit(cs_params->timer_handle, HAL_TIM_OC_COMPARE_UNIT_4, &oc_init);
+		HAL_TIM_SetTriggerOutput(cs_params->timer_handle, HAL_TIM_TRGO_OC4);
+	}
+	else
+	{
+		HAL_TIM_SetTriggerOutput(cs_params->timer_handle, HAL_TIM_TRGO_UPDATE);
+	}
+	if (adc2_center > 0)
+	{
+		oc_init.pulse = instance->ARR-adc2_center;
+		HAL_TIM_OC_SetConfigCompareUnit(cs_params->timer_handle, HAL_TIM_OC_COMPARE_UNIT_6, &oc_init);
+		HAL_TIM_SetTriggerOutput2(cs_params->timer_handle, HAL_TIM_TRGO2_OC6);
+	}
+	else
+	{
+		HAL_TIM_SetTriggerOutput2(cs_params->timer_handle, HAL_TIM_TRGO2_UPDATE);
+	}
+	#else
 	// set the trigger output event
 	LL_TIM_OC_InitTypeDef oc_init = {
 		.OCMode = LL_TIM_OCMODE_PWM2,
@@ -230,6 +347,7 @@ void* Phoque_CurrentSense::SyncLowSide(void* _driver_params, void* _cs_params)
 	{
 		LL_TIM_SetTriggerOutput2(instance, LL_TIM_TRGO2_UPDATE);
 	}
+	#endif
 
 	// restart all the timers of the driver
 	stm32_resume(driver_params);
@@ -248,19 +366,25 @@ void* Phoque_CurrentSense::ConfigureADC(const void* driver_params, const int pin
 	GPIO_Init();
 	DMA_InitClock(); 
 	OPAMP_Init();
-	hadc1.Init.NbrOfConversion = 0;
-	hadc2.Init.NbrOfConversion = 0;
-	int adc1_len = ADC1_Init(&hadc1);
-	int adc2_len = ADC2_Init(&hadc2);
+	int adc1_len = ADC1_Init(&hadc1, 0);
+	int adc2_len = ADC2_Init(&hadc2, 0);
 	//allocate single buffer for faster cache access
 	adc1_buffer = new uint16_t[adc1_len+adc2_len];
 	adc2_buffer = &adc1_buffer[adc1_len];
 
+	#ifdef USE_HALV2_DRIVER
+	HAL_ADC_Calibrate(&hadc1);
+	HAL_ADC_Calibrate(&hadc2);
+
+	DMA_Init(&hadc1, &hdma_adc1, LPDMA1_CH0, HAL_LPDMA1_REQUEST_ADC1);
+	DMA_Init(&hadc2, &hdma_adc2, LPDMA2_CH0, HAL_LPDMA2_REQUEST_ADC2);
+	#else
 	HAL_ADCEx_Calibration_Start(&hadc1,ADC_SINGLE_ENDED);
 	HAL_ADCEx_Calibration_Start(&hadc2,ADC_SINGLE_ENDED);
 
 	DMA_Init(&hadc1, &hdma_adc1, DMA1_Channel1, DMA_REQUEST_ADC1);
 	DMA_Init(&hadc2, &hdma_adc2, DMA2_Channel1, DMA_REQUEST_ADC2);
+	#endif
 
 	#ifdef PHOQUE_DEBUG_SAMPLING
 	//End of Sample
@@ -272,6 +396,16 @@ void* Phoque_CurrentSense::ConfigureADC(const void* driver_params, const int pin
 	LL_ADC_EnableIT_EOS(ADC2);
 	#endif
 
+	#ifdef USE_HALV2_DRIVER
+	if (HAL_ADC_REG_StartConv_DMA(&hadc1, reinterpret_cast<uint8_t*>(adc1_buffer), adc1_len) != HAL_OK)
+	{
+		SimpleFOCDebug::println(PHOQUE_CS_DEBUG "ADC1 DMA read init failed");
+	}
+	if (HAL_ADC_REG_StartConv_DMA(&hadc2, reinterpret_cast<uint8_t*>(adc2_buffer), adc2_len) != HAL_OK)
+	{
+		SimpleFOCDebug::println(PHOQUE_CS_DEBUG "ADC2 DMA read init failed");
+	}
+	#else
 	if (HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buffer, adc1_len) != HAL_OK)
 	{
 		SimpleFOCDebug::println(PHOQUE_CS_DEBUG "ADC1 DMA read init failed");
@@ -280,6 +414,7 @@ void* Phoque_CurrentSense::ConfigureADC(const void* driver_params, const int pin
 	{
 		SimpleFOCDebug::println(PHOQUE_CS_DEBUG "ADC2 DMA read init failed");
 	}
+	#endif
 	
 	Stm32CurrentSenseParams* params = new Stm32CurrentSenseParams {
 		.pins = { pinA, pinB, pinC },

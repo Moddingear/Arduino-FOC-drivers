@@ -101,6 +101,8 @@ void Phoque1_CurrentSense::OPAMP_Init()
 #define IMPORTANT_CYCLES 6
 #define SAMPLETIME_PERIPHERAL ADC_SAMPLETIME_47CYCLES_5
 
+const char ADC_ConfigFail[] = "HAL_ADC_ConfigChannel failed for channel ";
+
 #if OPAMP_USE_INTERNAL_CHANNEL
 	#define ADC1_IMPORTANT_NUM (read_bemf ? 3:1)
 	#define ADC2_IMPORTANT_NUM (read_bemf ? 3:2)
@@ -122,7 +124,7 @@ int Phoque1_CurrentSense::get_adc2_important_duration()
 
 const char *ADC_ConfigFailStart = "HAL_ADC_ConfigChannel failed! ADC";
 
-int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
+int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1, uint8_t sequence_length)
 {
 	ADC_ChannelConfTypeDef sConfig = {0};
 	sConfig.SingleDiff = ADC_SINGLE_ENDED;
@@ -130,11 +132,11 @@ int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 	sConfig.Offset = 0;
 
 	#if OPAMP_USE_INTERNAL_CHANNEL
-	hadc1->Init.NbrOfConversion += ADC1_IMPORTANT_NUM + 2;
+	int this_seq_len = ADC1_IMPORTANT_NUM + 2;
 	#else
-	hadc1->Init.NbrOfConversion += ADC1_IMPORTANT_NUM + 1;
+	int this_seq_len = ADC1_IMPORTANT_NUM + 1;
 	#endif
-	Phoque_CurrentSense::ADC1_Init(hadc1);
+	Phoque_CurrentSense::ADC1_Init(hadc1, this_seq_len + sequence_length);
 
 	
 	#if OPAMP_USE_INTERNAL_CHANNEL
@@ -149,7 +151,7 @@ int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 	if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
 	{
 		SimpleFOCDebug::print(ADC_ConfigFail);
-		SimpleFOCDebug::println("1CURRV")
+		SimpleFOCDebug::println("1CURRV");
 	}
 
 	#if !OPAMP_USE_INTERNAL_CHANNEL
@@ -160,7 +162,7 @@ int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 	if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
 	{
 		SimpleFOCDebug::print(ADC_ConfigFail);
-		SimpleFOCDebug::println("1CURRW")
+		SimpleFOCDebug::println("1CURRW");
 	}
 	#endif
 
@@ -178,7 +180,7 @@ int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 		if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
 		{
 			SimpleFOCDebug::print(ADC_ConfigFail);
-			SimpleFOCDebug::println("1BEMFU")
+			SimpleFOCDebug::println("1BEMFU");
 		}
 	}
 	
@@ -197,7 +199,7 @@ int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 	if (HAL_ADC_ConfigChannel(hadc1, &sConfig) != HAL_OK)
 	{
 		SimpleFOCDebug::print(ADC_ConfigFail);
-		SimpleFOCDebug::println("1VBUS")
+		SimpleFOCDebug::println("1VBUS");
 	}
 
 	#if OPAMP_USE_INTERNAL_CHANNEL
@@ -212,10 +214,10 @@ int Phoque1_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 		SimpleFOCDebug::println("1POT")
 	}
 	#endif
-	return hadc1->Init.NbrOfConversion;
+	return this_seq_len;
 }
 
-int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
+int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2, uint8_t sequence_length)
 {
 	ADC_ChannelConfTypeDef sConfig = {0};
 	sConfig.SingleDiff = ADC_SINGLE_ENDED;
@@ -223,11 +225,11 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 	sConfig.Offset = 0;
 
 	#if OPAMP_USE_INTERNAL_CHANNEL
-	hadc2->Init.NbrOfConversion += ADC2_IMPORTANT_NUM + 1;
+	int this_seq_len = ADC2_IMPORTANT_NUM + 1;
 	#else
-	hadc2->Init.NbrOfConversion += ADC2_IMPORTANT_NUM + 2;
+	int this_seq_len = ADC2_IMPORTANT_NUM + 2;
 	#endif
-	Phoque_CurrentSense::ADC2_Init(hadc2);
+	Phoque_CurrentSense::ADC2_Init(hadc2, this_seq_len + sequence_length);
 
 	#if OPAMP_USE_INTERNAL_CHANNEL
 	// Configure Internal Channel (Opamp 2 / phase U current)
@@ -241,7 +243,7 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 	if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
 	{
 		SimpleFOCDebug::print(ADC_ConfigFail);
-		SimpleFOCDebug::println("2CURRU")
+		SimpleFOCDebug::println("2CURRU");
 	}
 
 	#if OPAMP_USE_INTERNAL_CHANNEL
@@ -270,7 +272,7 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 		if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
 		{
 			SimpleFOCDebug::print(ADC_ConfigFail);
-			SimpleFOCDebug::println("2BEMFV")
+			SimpleFOCDebug::println("2BEMFV");
 		}
 
 		/** Configure Regular Channel (PA4 / BEMFW / Phase W)
@@ -285,7 +287,7 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 		if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
 		{
 			SimpleFOCDebug::print(ADC_ConfigFail);
-			SimpleFOCDebug::println("2BEMFW")
+			SimpleFOCDebug::println("2BEMFW");
 		}
 	}
 	
@@ -302,7 +304,7 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 	if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
 	{
 		SimpleFOCDebug::print(ADC_ConfigFail);
-		SimpleFOCDebug::println("2TEMP")
+		SimpleFOCDebug::println("2TEMP");
 	}
 
 	#if !OPAMP_USE_INTERNAL_CHANNEL
@@ -314,7 +316,7 @@ int Phoque1_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
 	if (HAL_ADC_ConfigChannel(hadc2, &sConfig) != HAL_OK)
 	{
 		SimpleFOCDebug::print(ADC_ConfigFail);
-		SimpleFOCDebug::println("2POT")
+		SimpleFOCDebug::println("2POT");
 	}
 	#endif
 	return hadc2->Init.NbrOfConversion;

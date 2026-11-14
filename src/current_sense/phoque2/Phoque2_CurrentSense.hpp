@@ -19,8 +19,8 @@ private:
 
 	virtual int get_adc1_important_duration() override;
 	virtual int get_adc2_important_duration() override;
-	virtual int ADC1_Init(ADC_HandleTypeDef* hadc1) override;
-	virtual int ADC2_Init(ADC_HandleTypeDef* hadc2) override;
+	virtual int ADC1_Init(ADC_HandleTypeDef* hadc1, uint8_t sequence_length) override;
+	virtual int ADC2_Init(ADC_HandleTypeDef* hadc2, uint8_t sequence_length) override;
 
 	void clear_currents() final;
 };

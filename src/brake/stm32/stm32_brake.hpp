@@ -1,32 +1,65 @@
 #pragma once
 
-#ifdef STM32G4xx
+#if defined(STM32G4) || defined(STM32C5)
+#include <stm32yyxx_hal_conf.h>
+#if defined(STM32G4)
 #include "stm32g4xx_hal.h"
+#endif
+#if defined(STM32C5)
+#include "stm32c5xx_hal.h"
+#endif
 #if defined(HAL_DAC_MODULE_ENABLED) && defined(HAL_COMP_MODULE_ENABLED)
 
 #include "PinNames.h"
+
+#ifdef STM32G4
 #include "stm32g4xx_hal_comp.h"
 #include "stm32g4xx_hal_dac.h"
+#endif
+#ifdef STM32C5
+#include "stm32c5xx_hal_comp.h"
+#include "stm32c5xx_hal_dac.h"
+#endif
+
+#ifdef USE_HALV2_DRIVER
+#define DAC_HANDLE_TYPE hal_dac_handle_t
+#define DAC_CONFIG_TYPE	hal_dac_channel_config_t
+#define DAC_CHANNEL_TYPE hal_dac_channel_t
+#define COMP_HANDLE_TYPE hal_comp_handle_t
+#define COMP_INP_TYPE hal_comp_input_plus_t
+#define COMP_INM_TYPE hal_comp_input_minus_t
+#define COMP_HYST_TYPE hal_comp_input_hysteresis_t
+#define HAL_STATUS_TYPE hal_status_t
+#else
+#define DAC_HANDLE_TYPE DAC_HandleTypeDef
+#define DAC_CONFIG_TYPE	DAC_ChannelConfTypeDef
+#define DAC_CHANNEL_TYPE uint32_t
+#define COMP_HANDLE_TYPE COMP_HandleTypeDef
+#define COMP_INP_TYPE uint32_t
+#define COMP_INM_TYPE uint32_t
+#define COMP_HYST_TYPE uint32_t
+#define HAL_STATUS_TYPE HAL_StatusTypeDef
+#endif
 
 class stm32_brake
 {
 protected:
-	DAC_HandleTypeDef hdac;
-	COMP_HandleTypeDef hcomp;
+	DAC_HANDLE_TYPE hdac;
+	COMP_HANDLE_TYPE hcomp;
 	//stm32 hardware dac channel, not 1-2
-	uint32_t dac_channel;
+	DAC_CHANNEL_TYPE dac_channel;
 	PinName vbus_pin;
 	PinName brake_pin;
 	uint8_t brake_af_num;
 public:
 	static DAC_TypeDef* get_dac(uint8_t index);
-	static uint32_t get_dac_channel(uint8_t index);
-	static uint32_t get_comp_minus_dac(uint8_t dac, uint8_t channel);
+	static DAC_CHANNEL_TYPE get_dac_channel(uint8_t index);
+	static COMP_INM_TYPE get_comp_minus_dac(uint8_t dac, uint8_t channel);
 	static COMP_TypeDef* get_comp_from_plus_io(PinName pin);
-	static uint32_t get_comp_plus_io(PinName pin);
+	static COMP_INP_TYPE get_comp_plus_io(PinName pin);
 protected:
 
-	virtual DAC_ChannelConfTypeDef get_dac_config();
+	virtual DAC_CONFIG_TYPE get_dac_config();
 	/**
 	 * @brief Configure DAC and comparator for brake function
 	 * 
@@ -36,7 +69,7 @@ protected:
 	 * @param dac_channel Index of the channel to use (for channel 1, this is 1)
 	 * @param hysteresis Hysteresis of the brake, can be value of @ref COMP_Hysteresis
 	 */
-	void configure_brake(COMP_TypeDef *comparator, bool brake_polarity, uint8_t dac_number, uint8_t _dac_channel, uint32_t hysteresis);
+	void configure_brake(COMP_TypeDef *comparator, bool brake_polarity, uint8_t dac_number, uint8_t _dac_channel, COMP_HYST_TYPE hysteresis);
 
 public:
 	/**
@@ -47,7 +80,7 @@ public:
 	stm32_brake(PinName vbus_pin, PinName brake_pin, uint8_t brake_af_num);
 	
 	void start_brake(float trigger_voltage_over_vref);
-	HAL_StatusTypeDef set_raw_threshold(float trigger_voltage_over_vref);
+	HAL_STATUS_TYPE set_raw_threshold(float trigger_voltage_over_vref);
 };
 #endif
 #endif

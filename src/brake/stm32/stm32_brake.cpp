@@ -5,8 +5,6 @@
 #warning("HAL_DAC_MODULE_ONLY must be defined for brake to work correctly")
 #endif
 
-#include "stm32g4xx_hal_comp.h"
-#include "stm32g4xx_hal_dac.h"
 #include "Arduino.h" //for pin_function
 
 DAC_TypeDef* stm32_brake::get_dac(uint8_t index)
@@ -34,8 +32,11 @@ DAC_TypeDef* stm32_brake::get_dac(uint8_t index)
 	}
 }
 
-uint32_t stm32_brake::get_dac_channel(uint8_t index)
+DAC_CHANNEL_TYPE stm32_brake::get_dac_channel(uint8_t index)
 {
+	#ifdef USE_HALV2_DRIVER
+	return static_cast<hal_dac_channel_t>(index);
+	#else
 	switch (index)
 	{
 	#ifdef DAC_CHANNEL_1
@@ -49,10 +50,12 @@ uint32_t stm32_brake::get_dac_channel(uint8_t index)
 	default:
 		return 0;
 	}
+	#endif
 }
 
-uint32_t stm32_brake::get_comp_minus_dac(uint8_t dac, uint8_t channel)
+COMP_INM_TYPE stm32_brake::get_comp_minus_dac(uint8_t dac, uint8_t channel)
 {
+	#ifdef STM32G4
 	switch (dac)
 	{
 	#ifdef DAC1
@@ -123,10 +126,36 @@ uint32_t stm32_brake::get_comp_minus_dac(uint8_t dac, uint8_t channel)
 	default:
 		return 0;
 	}
+	#endif
+	#ifdef STM32C5
+	switch (dac)
+	{
+	#ifdef DAC1
+	case 1:
+		switch (channel)
+		{
+		#ifdef COMP1
+		case 1:
+			return HAL_COMP_INPUT_MINUS_DAC1_CH1;
+		#endif
+		#ifdef COMP2
+		case 2:
+			return HAL_COMP_INPUT_MINUS_DAC1_CH2;
+		#endif
+		default:
+			return static_cast<COMP_INM_TYPE>(0);
+		}
+	#endif
+	default:
+		return static_cast<COMP_INM_TYPE>(0);
+	}
+	#endif
+	return static_cast<COMP_INM_TYPE>(0);
 }
 
 COMP_TypeDef* stm32_brake::get_comp_from_plus_io(PinName pin)
 {
+	#ifdef STM32G4
 	switch (pin)
 	{
 	#ifdef COMP1
@@ -168,10 +197,25 @@ COMP_TypeDef* stm32_brake::get_comp_from_plus_io(PinName pin)
 	default:
 		return nullptr;
 	}
+	#endif
+	#ifdef STM32C552xx
+	switch (pin)
+	{
+	case PA_0:
+	case PB_0:
+	case PB_2:
+		return COMP1;
+	
+	default:
+		return nullptr;
+	}
+	#endif
+	return nullptr;
 }
 
-uint32_t stm32_brake::get_comp_plus_io(PinName pin)
+COMP_INP_TYPE stm32_brake::get_comp_plus_io(PinName pin)
 {
+	#ifdef STM32G4
 	switch (pin)
 	{
 	#ifdef COMP1
@@ -221,10 +265,34 @@ uint32_t stm32_brake::get_comp_plus_io(PinName pin)
 	default:
 		return 0;
 	}
+	#endif
+	#ifdef STM32C552xx
+	switch (pin)
+	{
+	case PA_0:
+		return HAL_COMP_INPUT_PLUS_IO1;
+	case PB_0:
+		return HAL_COMP_INPUT_PLUS_IO2;
+	case PB_2:
+		return HAL_COMP_INPUT_PLUS_IO3;
+	default:
+		return static_cast<COMP_INP_TYPE>(0);
+	}
+	#endif
+	return static_cast<COMP_INP_TYPE>(0);
 }
 
-DAC_ChannelConfTypeDef stm32_brake::get_dac_config()
+DAC_CONFIG_TYPE stm32_brake::get_dac_config()
 {
+	#ifdef USE_HALV2_DRIVER
+	hal_dac_channel_config_t dac_channel_config = {
+		.data_sign_format = HAL_DAC_SIGN_FORMAT_UNSIGNED,
+		.trigger = HAL_DAC_TRIGGER_NONE,
+		.output_buffer = HAL_DAC_OUTPUT_BUFFER_DISABLED,
+		.output_connection = HAL_DAC_OUTPUT_CONNECTION_INTERNAL,
+		.alignment = HAL_DAC_DATA_ALIGN_12_BITS_RIGHT,
+	};
+	#else
 	DAC_ChannelConfTypeDef dac_channel_config = {
 		.DAC_HighFrequency = DAC_HIGH_FREQUENCY_INTERFACE_MODE_DISABLE,
 		.DAC_DMADoubleDataMode = DISABLE,
@@ -237,14 +305,31 @@ DAC_ChannelConfTypeDef stm32_brake::get_dac_config()
 		.DAC_UserTrimming = DAC_TRIMMING_FACTORY,
 		.DAC_TrimmingValue = 0
 	};
+	#endif
 	return dac_channel_config;
 }
 
-void stm32_brake::configure_brake(COMP_TypeDef *comparator, bool brake_polarity, uint8_t dac_number, uint8_t _dac_channel, uint32_t hysteresis)
+void stm32_brake::configure_brake(COMP_TypeDef *comparator, bool brake_polarity, uint8_t dac_number, uint8_t _dac_channel, COMP_HYST_TYPE hysteresis)
 {
-	hdac.Instance = get_dac(dac_number);
+	dac_channel = get_dac_channel(_dac_channel);
+
+	#ifdef USE_HALV2_DRIVER
+	auto dac_instance = get_dac(dac_number);
+	HAL_DAC_Init(&hdac, static_cast<hal_dac_t>(reinterpret_cast<uintptr_t>(dac_instance)));
 	
-	uint32_t dac_channel = get_dac_channel(_dac_channel);
+
+	auto comp_instance = comparator;
+	hal_comp_config_t comp_config = {
+		.power_mode = HAL_COMP_POWER_MODE_HIGH_SPEED,
+		.input_plus = get_comp_plus_io(vbus_pin),
+		.input_minus = get_comp_minus_dac(dac_number, _dac_channel),
+		.input_hysteresis = hysteresis,
+		.output_polarity = brake_polarity ? HAL_COMP_OUTPUT_POLARITY_NONINVERTED : HAL_COMP_OUTPUT_POLARITY_INVERTED,
+	};
+	HAL_COMP_Init(&hcomp, static_cast<hal_comp_t>(reinterpret_cast<uintptr_t>(comp_instance)));
+	HAL_COMP_SetConfig(&hcomp, &comp_config);
+	#else
+	hdac.Instance = get_dac(dac_number);
 
 	hcomp.Instance = comparator;
 	hcomp.Init = {
@@ -255,6 +340,7 @@ void stm32_brake::configure_brake(COMP_TypeDef *comparator, bool brake_polarity,
 		.BlankingSrce = COMP_BLANKINGSRC_NONE,
 		.TriggerMode = COMP_TRIGGERMODE_NONE
 	};
+	#endif
 }
 
 stm32_brake::stm32_brake(PinName _vbus_pin, PinName _brake_pin, uint8_t _brake_af_num)
@@ -265,7 +351,20 @@ stm32_brake::stm32_brake(PinName _vbus_pin, PinName _brake_pin, uint8_t _brake_a
 
 void stm32_brake::start_brake(float trigger_voltage_over_vref)
 {
-	HAL_StatusTypeDef status;
+	HAL_STATUS_TYPE status;
+	#ifdef USE_HALV2_DRIVER
+	hal_dac_config_t dac_config = {
+		.high_frequency_mode = HAL_DAC_GetOptimumFrequencyMode(&hdac),
+	};
+	status = HAL_DAC_SetConfig(&hdac, &dac_config);
+	hal_dac_channel_config_t dac_channel_config = get_dac_config();
+	status = HAL_DAC_SetConfigChannel(&hdac, dac_channel, &dac_channel_config);
+	status = set_raw_threshold(trigger_voltage_over_vref);
+	status = HAL_DAC_StartChannel(&hdac, dac_channel);
+	status = HAL_COMP_Start(&hcomp);
+	pin_function(vbus_pin, STM_PIN_DATA(STM_MODE_ANALOG, LL_GPIO_PULL_NO, 0));
+	pin_function(brake_pin, STM_PIN_DATA(STM_MODE_AF_PP, LL_GPIO_PULL_NO, brake_af_num));
+	#else
 	//Even if HAL_DAC_MODULE_ONLY is set, Arduino still overrides HAL_DAC_MspInit and tries to pinmap the DAC out, fails and crashes the stm32.
 	//Set this to 1 when it's fixed.
 	#if 0
@@ -284,11 +383,17 @@ void stm32_brake::start_brake(float trigger_voltage_over_vref)
 	status = HAL_COMP_Start(&hcomp);
 	pin_function(vbus_pin, STM_PIN_DATA(STM_MODE_ANALOG, GPIO_NOPULL, 0));
 	pin_function(brake_pin, STM_PIN_DATA(STM_MODE_AF_PP, GPIO_NOPULL, brake_af_num));
+	#endif
 }
 
-HAL_StatusTypeDef stm32_brake::set_raw_threshold(float trigger_voltage_over_vref)
+HAL_STATUS_TYPE stm32_brake::set_raw_threshold(float trigger_voltage_over_vref)
 {
-	return HAL_DAC_SetValue(&hdac, dac_channel, DAC_ALIGN_12B_R, trigger_voltage_over_vref * ((1<<12) -1));
+	uint16_t dac_value = trigger_voltage_over_vref * ((1<<12) -1);
+	#ifdef USE_HALV2_DRIVER
+	return HAL_DAC_SetChannelData(&hdac, dac_channel, dac_value);
+	#else
+	return HAL_DAC_SetValue(&hdac, dac_channel, DAC_ALIGN_12B_R, dac_value);
+	#endif
 }
 
 

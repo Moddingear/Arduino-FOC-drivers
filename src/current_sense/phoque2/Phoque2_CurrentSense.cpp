@@ -40,16 +40,14 @@ int Phoque2_CurrentSense::get_adc2_important_duration()
 }
 
 
-int Phoque2_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
+int Phoque2_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1, uint8_t sequence_length)
 {
 	ADC_ChannelConfTypeDef sConfig = {0};
 	sConfig.SingleDiff = ADC_SINGLE_ENDED;
 	sConfig.OffsetNumber = ADC_OFFSET_NONE;
 	sConfig.Offset = 0;
 
-	hadc1->Init.NbrOfConversion += 3 + read_bemf * 2;
-
-	Phoque_CurrentSense::ADC1_Init(hadc1);
+	Phoque_CurrentSense::ADC1_Init(hadc1, 3 + read_bemf * 2 + sequence_length);
 
 	/** Configure Regular Channel (PA2 / phase U current)
 	*/
@@ -108,16 +106,14 @@ int Phoque2_CurrentSense::ADC1_Init(ADC_HandleTypeDef* hadc1)
 	return hadc1->Init.NbrOfConversion;
 }
 
-int Phoque2_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2)
+int Phoque2_CurrentSense::ADC2_Init(ADC_HandleTypeDef* hadc2, uint8_t sequence_length)
 {
 	ADC_ChannelConfTypeDef sConfig = {0};
 	sConfig.SingleDiff = ADC_SINGLE_ENDED;
 	sConfig.OffsetNumber = ADC_OFFSET_NONE;
 	sConfig.Offset = 0;
 
-	hadc2->Init.NbrOfConversion += 3 + read_bemf;
-
-	Phoque_CurrentSense::ADC2_Init(hadc2);
+	Phoque_CurrentSense::ADC2_Init(hadc2, 3 + read_bemf + sequence_length);
 
 	/** Configure Regular Channel (PA7 / phase V current)
 	*/

@@ -1,6 +1,14 @@
 #pragma once
 
-#if defined(STM32G4xx)
+#if defined(STM32G4) || defined(STM32C5)
+
+#include <current_sense/hardware_specific/stm32/stm32_handle_types.h>
+
+#ifdef USE_HALV2_DRIVER
+#define DMA_HANDLE_TYPE hal_dma_handle_t
+#else
+#define DMA_HANDLE_TYPE DMA_HandleTypeDef
+#endif
 
 #include "common/base_classes/CurrentSense.h"
 
@@ -42,10 +50,12 @@ protected:
 	virtual int get_adc2_important_duration() = 0;
 
 	//Configure ADC1, child classes should configure each rank to sample, return number of samples
-	virtual int ADC1_Init(ADC_HandleTypeDef* hadc1);
+	virtual int ADC1_Init(ADC_HANDLE_TYPE *hadc1, uint8_t sequence_length);
 	//Configure ADC2, child classes should configure each rank to sample, return number of samples
-	virtual int ADC2_Init(ADC_HandleTypeDef* hadc2);
-	virtual void DMA_Init(ADC_HandleTypeDef *hadc, DMA_HandleTypeDef *hdma_adc, DMA_Channel_TypeDef* channel, uint32_t request);
+	virtual int ADC2_Init(ADC_HANDLE_TYPE *hadc2, uint8_t sequence_length);
+
+	virtual void DMA_Init(ADC_HANDLE_TYPE *hadc, DMA_HANDLE_TYPE *hdma_adc, DMA_Channel_TypeDef* channel, uint32_t request);
+	
 	virtual void* SyncLowSide(void* driver_params, void* cs_params);
 	virtual void* ConfigureADC(const void* driver_params, const int pinA, const int pinB, const int pinC);
 

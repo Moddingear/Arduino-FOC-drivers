@@ -3,7 +3,7 @@
 
 #include "Arduino.h"
 
-#if defined(_STM32_DEF_)
+#if defined(ARDUINO_ARCH_STM32) && !defined(USE_HALV2_DRIVER)
 
 
 #define _2PI 6.28318530718f

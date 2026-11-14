@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 
-#if defined(_STM32_DEF_)
+#if defined(ARDUINO_ARCH_STM32) && !defined(USE_HALV2_DRIVER)
 
 #include <HardwareTimer.h>
 #include "common/base_classes/Sensor.h"

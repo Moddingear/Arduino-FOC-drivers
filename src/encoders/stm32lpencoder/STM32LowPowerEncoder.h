@@ -2,7 +2,7 @@
 #include "Arduino.h"
 
 
-#if defined(_STM32_DEF_) && defined(HAL_LPTIM_MODULE_ENABLED)
+#if defined(ARDUINO_ARCH_STM32) && defined(HAL_LPTIM_MODULE_ENABLED)
 
 #include "common/base_classes/Sensor.h"
 #include "common/foc_utils.h"

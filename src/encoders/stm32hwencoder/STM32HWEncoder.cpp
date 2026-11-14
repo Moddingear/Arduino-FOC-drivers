@@ -1,6 +1,6 @@
 #include "STM32HWEncoder.h"
 
-#if defined(_STM32_DEF_)
+#if defined(ARDUINO_ARCH_STM32) && !defined(USE_HALV2_DRIVER)
 
 #include "drivers/hardware_specific/stm32/stm32_mcu.h"
 #include "drivers/hardware_specific/stm32/stm32_timerutils.h"

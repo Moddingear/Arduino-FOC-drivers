@@ -19,6 +19,7 @@ bool SimpleFOCRegisters::registerToComms(RegisterIO& comms, uint8_t reg, FOCMoto
         case SimpleFOCRegister::REG_MODULATION_MODE:
             comms << (uint8_t)motor->foc_modulation;
             break;
+        #if !SIMPLEFOC_SPLIT_CONTROLLER
         case SimpleFOCRegister::REG_TORQUE_MODE:
             comms << (uint8_t)motor->torque_controller;
             break;
@@ -28,6 +29,7 @@ bool SimpleFOCRegisters::registerToComms(RegisterIO& comms, uint8_t reg, FOCMoto
         case SimpleFOCRegister::REG_TARGET:
             comms << motor->target;
             break;
+        #endif
         case SimpleFOCRegister::REG_ANGLE:
             comms << motor->shaft_angle;
             break;
@@ -41,9 +43,11 @@ bool SimpleFOCRegisters::registerToComms(RegisterIO& comms, uint8_t reg, FOCMoto
                 comms << (float)fmod(motor->shaft_angle, _2PI);
             }
             break;
+        #if !SIMPLEFOC_SPLIT_CONTROLLER
         case SimpleFOCRegister::REG_VELOCITY:
             comms << motor->shaft_velocity;
             break;
+        #endif
         case SimpleFOCRegister::REG_SENSOR_ANGLE:
             if (motor->sensor)
                 comms << motor->sensor->getAngle(); // stored angle
@@ -59,8 +63,10 @@ bool SimpleFOCRegisters::registerToComms(RegisterIO& comms, uint8_t reg, FOCMoto
         case SimpleFOCRegister::REG_SENSOR_VELOCITY:
             if (motor->sensor)
                 comms << motor->sensor->getVelocity(); // stored angle
+            #if !SIMPLEFOC_SPLIT_CONTROLLER
             else
                 comms << motor->shaft_velocity;
+            #endif
             break;
         case SimpleFOCRegister::REG_SENSOR_TIMESTAMP:
             if (motor->sensor)
@@ -150,6 +156,7 @@ bool SimpleFOCRegisters::registerToComms(RegisterIO& comms, uint8_t reg, FOCMoto
                 comms << 0.0f;
             }
             break;
+        #if !SIMPLEFOC_SPLIT_CONTROLLER
         case SimpleFOCRegister::REG_VEL_PID_P:
             comms << motor->PID_velocity.P;
             break;
@@ -223,6 +230,7 @@ bool SimpleFOCRegisters::registerToComms(RegisterIO& comms, uint8_t reg, FOCMoto
         case SimpleFOCRegister::REG_CURD_LPF_T:
             comms << motor->LPF_current_d.Tf;
             break;
+        #endif
 
         case SimpleFOCRegister::REG_VOLTAGE_LIMIT:
             comms << motor->voltage_limit;
@@ -233,9 +241,11 @@ bool SimpleFOCRegisters::registerToComms(RegisterIO& comms, uint8_t reg, FOCMoto
         case SimpleFOCRegister::REG_VELOCITY_LIMIT:
             comms << motor->velocity_limit;
             break;
+        #if !SIMPLEFOC_SPLIT_CONTROLLER
         case SimpleFOCRegister::REG_MOTION_DOWNSAMPLE:
             comms << (uint8_t)motor->motion_downsample;
             break;
+        #endif
         case SimpleFOCRegister::REG_DRIVER_VOLTAGE_LIMIT:
             comms << ((BLDCMotor*)motor)->driver->voltage_limit;  // TODO handle stepper motors
             break;
@@ -342,6 +352,7 @@ bool SimpleFOCRegisters::commsToRegister(RegisterIO& comms, uint8_t reg, FOCMoto
             comms >> val8;
             motor->foc_modulation = static_cast<FOCModulationType>(val8);
             return true;
+        #if !SIMPLEFOC_SPLIT_CONTROLLER
         case SimpleFOCRegister::REG_TORQUE_MODE:
             comms >> val8;
             motor->torque_controller = static_cast<TorqueControlType>(val8);
@@ -353,6 +364,7 @@ bool SimpleFOCRegisters::commsToRegister(RegisterIO& comms, uint8_t reg, FOCMoto
         case SimpleFOCRegister::REG_TARGET:
             comms >> (motor->target);
             return true;
+        #endif
 
         case SimpleFOCRegister::REG_TELEMETRY_DOWNSAMPLE:
             comms >> val32;
@@ -400,7 +412,7 @@ bool SimpleFOCRegisters::commsToRegister(RegisterIO& comms, uint8_t reg, FOCMoto
             else
                 ((BLDCMotor*)motor)->driver->disable();
             return true;
-
+        #if !SIMPLEFOC_SPLIT_CONTROLLER
         case SimpleFOCRegister::REG_VEL_PID_P:
             comms >> (motor->PID_velocity.P);
             return true;
@@ -491,15 +503,18 @@ bool SimpleFOCRegisters::commsToRegister(RegisterIO& comms, uint8_t reg, FOCMoto
                 //    motor->P_angle.limit = motor->current_limit;
             }
             return true;
+        #endif
         case SimpleFOCRegister::REG_VELOCITY_LIMIT:
             comms >> (motor->velocity_limit);
             //if (motor->controller!=MotionControlType::angle_nocascade)
             //    motor->P_angle.limit = motor->velocity_limit;
             return true;
+        #if !SIMPLEFOC_SPLIT_CONTROLLER
         case SimpleFOCRegister::REG_MOTION_DOWNSAMPLE:
             comms >> val8;
             motor->motion_downsample = val8; // change to use 4 bytes?
             return true;
+        #endif
         case SimpleFOCRegister::REG_DRIVER_VOLTAGE_LIMIT:
             comms >> (((BLDCMotor*)motor)->driver->voltage_limit);
             return true;

@@ -12,7 +12,7 @@
   It uses the timestamp of the last angle reading from the sensor and the low-pass filtered velocity
   from the motor to predict what the angle should be at the current time.
 */
-
+#if !SIMPLEFOC_SPLIT_CONTROLLER
 class SmoothingSensor : public Sensor
 {
   public:
@@ -43,5 +43,5 @@ class SmoothingSensor : public Sensor
     Sensor& _wrapped;
     const FOCMotor& _motor;
 };
-
+#endif
 #endif

@@ -3,6 +3,7 @@
 #include "./TrapezoidalPlanner.h"
 
 
+#if !SIMPLEFOC_SPLIT_CONTROLLER
 TrapezoidalPlanner::TrapezoidalPlanner(float max, float accel, float decel, float min){
     this->max_velocity = max;
     this->accel = accel;
@@ -28,7 +29,6 @@ void TrapezoidalPlanner::setTarget(float target){
 };
 
 
-
 float TrapezoidalPlanner::run(){
     // given the just current position and the target position, calculate the desired velocity
     // assume we're within our acceleration capabilities
@@ -48,5 +48,6 @@ float TrapezoidalPlanner::run(){
     // let's go that speed :-)
     return max_v * _sign(d);
 };
+#endif
 
 

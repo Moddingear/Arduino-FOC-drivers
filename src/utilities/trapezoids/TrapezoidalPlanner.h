@@ -17,6 +17,7 @@
  * method, to ensure the motor has time to reach the target velocity.
  * 
  */
+#if !SIMPLEFOC_SPLIT_CONTROLLER
 class TrapezoidalPlanner {
 public:
     TrapezoidalPlanner(float max, float accel, float decel = NOT_SET, float min = NOT_SET);
@@ -41,3 +42,4 @@ protected:
     float last_target = NOT_SET;
     float start_ang = 0.0f;
 };
+#endif

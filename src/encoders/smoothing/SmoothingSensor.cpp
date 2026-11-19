@@ -3,7 +3,7 @@
 #include "common/time_utils.h"
 #include "sensors/HallSensor.h"
 
-
+#if !SIMPLEFOC_SPLIT_CONTROLLER
 SmoothingSensor::SmoothingSensor(Sensor& s, const FOCMotor& m) : _wrapped(s), _motor(m)
 {
 }
@@ -59,3 +59,4 @@ float SmoothingSensor::getSensorAngle() {
 void SmoothingSensor::init() {
   _wrapped.init();
 }
+#endif
